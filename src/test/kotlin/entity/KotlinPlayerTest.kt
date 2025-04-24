@@ -4,88 +4,83 @@ import kotlin.test.*
 
 /**
  * Test class for KombiPlayer.
- * Tests drawCard, playCombination, passTurn, and reset methods.
+ * Verifies card management, scoring, turn status, and reset logic.
  */
 class KombiPlayerTest {
 
-    private lateinit var kombiPlayer: KombiPlayer
-    private lateinit var drawPile: DrawPile
+    private lateinit var player: KombiPlayer
 
     /**
-     * Sets up the test environment by initializing the KombiPlayer and DrawPile.
+     * Sets up a fresh player before each test.
      */
     @BeforeTest
     fun setUp() {
-        drawPile = DrawPile(
-            listOf(
-                KombiCard(CardSuit.HEARTS, CardValue.ACE),
-                KombiCard(CardSuit.HEARTS, CardValue.TWO),
-                KombiCard(CardSuit.HEARTS, CardValue.THREE)
-            )
-        )
-        kombiPlayer = KombiPlayer("Player1")
+        player = KombiPlayer("TestPlayer")
     }
 
     /**
-     * Tests the drawCard method to ensure a card is added to the player's hand.
+     * Tests that a card can be drawn when the hand size is valid.
      */
     @Test
     fun testDrawCard() {
-        val card = drawPile.draw()
-        assertNotNull(card, "Draw should not return null")
-        kombiPlayer.drawCard(card)
-
-        assertEquals(1, kombiPlayer.handCards.size, "The player should have 1 card in hand.")
-        assertEquals(2, drawPile.remainingCards(), "The draw pile should have 2 cards left.")
+        val card = KombiCard(CardSuit.HEARTS, CardValue.ACE)
+        player.drawCard(card)
+        assertEquals(1, player.handCards.size)
+        assertTrue(player.handCards.contains(card))
     }
 
     /**
-     * Tests the playCombination method to ensure the player can play a valid combination of cards.
+     * Tests that playCombination correctly updates the discard pile, removes cards, and adds points.
      */
     @Test
-    fun testPlayCombination() {
-        val combination = listOf(
-            KombiCard(CardSuit.HEARTS, CardValue.ACE),
-            KombiCard(CardSuit.HEARTS, CardValue.TWO)
+    fun testPlayCombinationWithAction() {
+        val combo = listOf(
+            KombiCard(CardSuit.HEARTS, CardValue.FIVE),
+            KombiCard(CardSuit.HEARTS, CardValue.SIX),
+            KombiCard(CardSuit.HEARTS, CardValue.SEVEN)
         )
-        kombiPlayer.handCards.addAll(combination)
+        player.handCards.addAll(combo)
 
-        val played = kombiPlayer.playCombination(combination)
+        val result = player.playCombination(combo, Action.COMBINATION)
 
-        assertTrue(played, "The player should be able to play the combination.")
-        assertTrue(kombiPlayer.handCards.isEmpty(), "The player's hand should be empty after playing.")
-        assertEquals(1, kombiPlayer.discardPile.size, "One combination should be in the discard pile.")
+        assertTrue(result, "Combination should be played successfully.")
+        assertTrue(player.discardPile.contains(combo), "Combination should be added to discard pile.")
+        assertEquals(6, player.points, "COMBINATION should give 2 points per card.")
+        assertEquals(Action.COMBINATION, player.lastAction, "Last action should be COMBINATION.")
+        assertTrue(player.handCards.isEmpty(), "Played cards should be removed from hand.")
     }
 
     /**
-     * Tests the passTurn method to ensure the player can pass their turn.
+     * Tests that passing a turn updates the hasPassed flag.
      */
     @Test
     fun testPassTurn() {
-        kombiPlayer.passTurn()
-        assertTrue(kombiPlayer.hasPassed, "The player should have passed their turn.")
+        player.passTurn()
+        assertTrue(player.hasPassed, "Player should be marked as passed.")
     }
 
     /**
-     * Tests the reset method to ensure the player's state is reset correctly.
+     * Tests that reset clears all relevant player state.
      */
     @Test
     fun testReset() {
-        kombiPlayer.handCards.add(KombiCard(CardSuit.SPADES, CardValue.SEVEN))
-        kombiPlayer.points = 10
-        kombiPlayer.passTurn()
-        kombiPlayer.discardPile.add(listOf(KombiCard(CardSuit.CLUBS, CardValue.THREE)))
+        player.handCards.add(KombiCard(CardSuit.SPADES, CardValue.SEVEN))
+        player.points = 10
+        player.passTurn()
+        player.discardPile.add(listOf(KombiCard(CardSuit.CLUBS, CardValue.THREE)))
+        player.lastAction = Action.TRIPLE
 
-        kombiPlayer.reset()
+        player.reset()
 
-        assertTrue(kombiPlayer.handCards.isEmpty(), "Hand should be empty after reset.")
-        assertTrue(kombiPlayer.discardPile.isEmpty(), "Discard pile should be empty after reset.")
-        assertEquals(0, kombiPlayer.points, "Points should be reset to 0.")
-        assertFalse(kombiPlayer.hasPassed, "Player should not be marked as passed after reset.")
+        assertTrue(player.handCards.isEmpty(), "Hand should be empty after reset.")
+        assertTrue(player.discardPile.isEmpty(), "Discard pile should be empty after reset.")
+        assertEquals(0, player.points, "Points should reset to 0.")
+        assertFalse(player.hasPassed, "Player should not be marked as passed after reset.")
+        assertEquals(Action.NOACTION, player.lastAction, "Last action should reset to NOACTION.")
     }
+
     /**
-     * Tests that hasSameNameAs returns true for players with identical names,
-     * and false for players with different names.
+     * Tests that players with the same name are considered equal by name check.
      */
     @Test
     fun testHasSameNameAs() {
