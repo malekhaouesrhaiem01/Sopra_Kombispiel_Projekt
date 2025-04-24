@@ -1,5 +1,9 @@
 package entity
-
+/**
+ * Represents the draw pile from which players can draw cards.
+ *
+ * Cards are stored internally in a shuffled stack (LIFO order).
+ */
 
 class DrawPile(cards: List<KombiCard>) {
     private val stack: ArrayDeque<KombiCard> = ArrayDeque(cards.shuffled())

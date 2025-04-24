@@ -1,5 +1,14 @@
 package entity
-
+/**
+ * Main game state for Kombi-Duell.
+ *
+ * Tracks the players, current turn, draw pile, exchange area, and handles turn switching and game-end logic.
+ *
+ * @property players The two players in the game
+ * @property activePlayerIndex Index of the currently active player
+ * @property drawPile The pile of remaining cards to draw from
+ * @property exchangeArea The shared card exchange area
+ */
 class KombiGame(val players: List<KombiPlayer>,
                 var activePlayerIndex: Int = 0,
                 val drawPile: DrawPile,

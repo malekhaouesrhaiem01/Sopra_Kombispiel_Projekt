@@ -1,7 +1,12 @@
 package entity
 
 
-
+/**
+ * Represents a single playing card in the Kombi-Duell game.
+ *
+ * @property suit The suit of the card (♠, ♥, ♦, ♣)
+ * @property value The value of the card (2–10, J, Q, K, A)
+ */
 data class KombiCard(val suit: CardSuit, val value: CardValue) {
     /**
      * compares two [KombiCard]s according to the [Enum.ordinal] value of their [CardSuit]

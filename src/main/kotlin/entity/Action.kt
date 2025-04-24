@@ -1,7 +1,7 @@
 package entity
 
 /**
- * Represents the types of card combinations a player can play in Kombi-Duell.
+ * Represents the types of card combinations a player can play in Kombi-Duel.
  *
  * - [TRIPLE]: A set of three cards with the same value (e.g., 7♠, 7♥, 7♦) → 10 points
  * - [QUADRUPLE]: A set of four cards with the same value (e.g., K♠, K♥, K♣, K♦) → 15 points
