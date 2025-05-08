@@ -1,26 +1,21 @@
 package entity
 
-
 /**
- * Represents a single playing card in the Kombi-Duell game.
+ * Represents a card in the Kombi-Duel game.
  *
- * @property suit The suit of the card (♠, ♥, ♦, ♣)
- * @property value The value of the card (2–10, J, Q, K, A)
+ * Each card has a [CardSuit] (e.g. CLUBS, SPADES) and a [CardValue] (e.g. TWO, JACK).
+ * Cards are immutable and used to form combinations such as triples, quadruples, and sequences.
+ *
+ * @property suit the suit of the card (♣, ♥, ♠, ♦)
+ * @property value the value of the card (2–10, J, Q, K, A)
  */
-data class KombiCard(val suit: CardSuit, val value: CardValue) {
+data class KombiCard(
+    val suit: CardSuit,
+    val value: CardValue
+) {
     /**
-     * compares two [KombiCard]s according to the [Enum.ordinal] value of their [CardSuit]
-     * (i.e., the order in which the suits are declared in the enum class)
+     * Returns a string representation of the card using its value and suit.
+     * Example: "7♠", "A♦"
      */
-    operator fun compareTo(other: KombiCard) = this.value.ordinal - other.value.ordinal
-    /**
-     * Returns the representation of the card as a character string,
-     * e.g. "A♥"
-     *
-     * The output combines the symbol of the card value with the Unicode character of the card shape.
-     *
-     * @return String representation of the card in the format <value><form>, e.g. "Q♦"
-     */
-    override fun toString() = "$suit$value"
-
+    override fun toString(): String = "${value}${suit}"
 }

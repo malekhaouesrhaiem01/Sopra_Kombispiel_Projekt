@@ -1,118 +1,67 @@
 package entity
 
-import kotlin.test.*
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertSame
 
 /**
- * Test class for KombiGame.
- * Tests game initialization, turn management, game-over conditions, and winner determination.
+ * Test cases for [KombiGame].
+ *
+ * Verifies that player list, draw pile, and exchange area are initialized correctly,
+ * and that the current player index behaves as expected.
  */
 class KombiGameTest {
 
-    private lateinit var kombiGame: KombiGame
-    private lateinit var player1: KombiPlayer
-    private lateinit var player2: KombiPlayer
-    private lateinit var drawPile: DrawPile
-    private lateinit var exchangeArea: ExchangeArea
+    private val player1 = KombiPlayer("Alice")
+    private val player2 = KombiPlayer("Bob")
+    private val deck = mutableListOf(
+        KombiCard(CardSuit.CLUBS, CardValue.TWO),
+        KombiCard(CardSuit.HEARTS, CardValue.ACE)
+    )
+    private val exchange = mutableListOf(
+        KombiCard(CardSuit.SPADES, CardValue.FIVE),
+        KombiCard(CardSuit.HEARTS, CardValue.SIX),
+        KombiCard(CardSuit.DIAMONDS, CardValue.SEVEN)
+    )
+
+    private val game = KombiGame(
+        players = listOf(player1, player2),
+        drawPile = deck,
+        exchangeArea = exchange,
+        currentPlayerIndex = 0
+    )
 
     /**
-     * Sets up a KombiGame with two players, an empty draw pile, and an exchange area.
+     * Tests whether the players are initialized and accessible by index.
      */
-    @BeforeTest
-    fun setUp() {
-        player1 = KombiPlayer("Player1")
-        player2 = KombiPlayer("Player2")
-        drawPile = DrawPile(
-            listOf(
-                KombiCard(CardSuit.HEARTS, CardValue.ACE),
-                KombiCard(CardSuit.SPADES, CardValue.KING),
-                KombiCard(CardSuit.CLUBS, CardValue.QUEEN)
-            )
-        )
-        exchangeArea = ExchangeArea(
-            listOf(
-                KombiCard(CardSuit.HEARTS, CardValue.THREE),
-                KombiCard(CardSuit.SPADES, CardValue.FOUR),
-                KombiCard(CardSuit.DIAMONDS, CardValue.FIVE)
-            )
-        )
-        kombiGame = KombiGame(listOf(player1, player2), 0, drawPile, exchangeArea)
+    @Test
+    fun testPlayerAccess() {
+        assertEquals(2, game.players.size, "There should be exactly two players.")
+        assertSame(player1, game.players[0], "First player should be Alice.")
+        assertSame(player2, game.players[1], "Second player should be Bob.")
     }
 
     /**
-     * Tests that the active player is returned correctly.
+     * Tests that the draw pile is stored correctly.
      */
     @Test
-    fun testGetActivePlayer() {
-        assertEquals(player1, kombiGame.getActivePlayer(), "Player 1 should be active initially.")
-        kombiGame.nextPlayer()
-        assertEquals(player2, kombiGame.getActivePlayer(), "Player 2 should be active after switching turn.")
+    fun testDrawPileInitialization() {
+        assertEquals(2, game.drawPile.size, "Draw pile should contain 2 cards.")
     }
 
     /**
-     * Tests that switching to the next player resets pass status and turn actions.
+     * Tests that the exchange area is stored correctly.
      */
     @Test
-    fun testNextPlayerResetsTurnState() {
-        kombiGame.turnActions = 2
-        player2.hasPassed = true
-
-        kombiGame.nextPlayer()
-
-        assertEquals(player2, kombiGame.getActivePlayer(), "Active player should switch to Player 2.")
-        assertFalse(player2.hasPassed, "Pass status should be reset after switching.")
-        assertEquals(0, kombiGame.turnActions, "Turn actions should reset to 0.")
+    fun testExchangeAreaInitialization() {
+        assertEquals(3, game.exchangeArea.size, "Exchange area should contain 3 cards.")
     }
 
     /**
-     * Tests that the game ends when a player has no more hand cards.
+     * Tests that the currentPlayerIndex is set correctly.
      */
     @Test
-    fun testGameEndsWhenHandIsEmpty() {
-        player1.handCards.clear()
-        val result = kombiGame.isGameOver()
-        assertTrue(result, "Game should end if a player has no hand cards.")
-    }
-
-    /**
-     * Tests that the game ends when both players have passed.
-     */
-    @Test
-    fun testGameEndsWhenAllPassed() {
-        player1.hasPassed = true
-        player2.hasPassed = true
-        val result = kombiGame.isGameOver()
-        assertTrue(result, "Game should end if both players have passed.")
-    }
-
-    /**
-     * Tests winner calculation logic based on point comparison.
-     */
-    @Test
-    fun testCalculateWinner() {
-        player1.points = 15
-        player2.points = 10
-        assertEquals("Player1 wins with 15 points", kombiGame.calculateWinner())
-
-        player1.points = 8
-        player2.points = 12
-        assertEquals("Player2 wins with 12 points", kombiGame.calculateWinner())
-
-        player1.points = 10
-        player2.points = 10
-        assertEquals("It's a tie! Both have 10 points", kombiGame.calculateWinner())
-    }
-    /**
-     * Tests that the draw pile and exchange area are accessible and initialized correctly.
-     * This ensures their usage is detected and avoids unused property warnings.
-     */
-    @Test
-    fun testDrawPileAndExchangeAreaAccess() {
-        // Check that the draw pile is not null and has cards
-        assertNotNull(kombiGame.drawPile, "Draw pile should be initialized.")
-        assertTrue(kombiGame.drawPile.remainingCards() >= 0, "Draw pile size should be valid.")
-
-        // Check that the exchange area is not null and has exactly 3 cards
-        assertNotNull(kombiGame.exchangeArea, "Exchange area should be initialized.")
-        assertEquals(3, kombiGame.exchangeArea.cards.size, "Exchange area should start with 3 cards.")
+    fun testCurrentPlayerIndex() {
+        assertEquals(0, game.currentPlayerIndex, "Initial active player should be at index 0.")
     }
 }

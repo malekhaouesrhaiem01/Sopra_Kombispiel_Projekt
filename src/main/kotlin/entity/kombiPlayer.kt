@@ -1,65 +1,37 @@
 package entity
 
-
-
 /**
- * Represents a player in the Kombi-Duell game.
+ * Represents a player in the Kombi-Duel game.
  *
- * Tracks the player’s hand, points, played combinations, and whether they passed.
+ * Stores all player-related data including name, hand cards, discard pile,
+ * current score, whether the player has passed this turn, and the first action performed in the current turn.
+ *
+ * @property name the player's name
+ * @property hand the cards currently in the player's hand
+ * @property discardPile the pile where valid played combinations are placed
+ * @property score the player's current score
+ * @property performedActions keeps track of the action performed in the current turn
  */
 data class KombiPlayer(
     val name: String,
-    val handCards: MutableList<KombiCard> = mutableListOf(),
-    val discardPile: MutableList<List<KombiCard>> = mutableListOf(),
-    var points: Int = 0,
-    var hasPassed: Boolean = false,
-    var lastAction: Action = Action.NOACTION
+    val hand: MutableList<KombiCard> = mutableListOf(),
+    val discardPile: MutableList<KombiCard> = mutableListOf(),
+    var score: Int = 0,
+    val performedActions: MutableList<Action> = mutableListOf()
 ) {
-    /**
-     * Adds a card to the player's hand if the hand has fewer than 10 cards.
-     */
-    fun drawCard(card: KombiCard) {
-        if (handCards.size < 10) handCards.add(card)
-    }
 
     /**
-     * Plays a combination of cards, updating points and lastAction if valid.
+     * Checks if the player's name is empty or blank.
      *
-     * @param cards The cards to play
-     * @param actionType The type of combination being played
-     * @return True if successful, false if cards are not in hand
+     * @return true if the name is empty or only whitespace
      */
-    fun playCombination(cards: List<KombiCard>, actionType: Action): Boolean {
-        return if (handCards.containsAll(cards)) {
-            discardPile.add(cards)
-            handCards.removeAll(cards)
-            points += actionType.calculatePoints(cards.size)
-            lastAction = actionType
-            true
-        } else false
-    }
+    fun hasEmptyName(): Boolean = name.isBlank()
 
     /**
-     * Marks the player as having passed their turn.
-     */
-    fun passTurn() {
-        hasPassed = true
-    }
-
-    /**
-     * Resets the player's state for a new game.
-     */
-    fun reset() {
-        handCards.clear()
-        discardPile.clear()
-        points = 0
-        hasPassed = false
-        lastAction = Action.NOACTION
-    }
-
-    /**
-     * Checks if this player has the same name as another player.
+     * Compares this player with another to check for identical names.
+     *
+     * @param other another [KombiPlayer] to compare with
+     * @return true if both players have the same name
      */
     fun hasSameNameAs(other: KombiPlayer): Boolean = this.name == other.name
 }
-

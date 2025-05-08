@@ -1,94 +1,91 @@
 package entity
 
-import kotlin.test.*
+import org.junit.jupiter.api.*
+import org.junit.jupiter.api.Assertions.*
 
 /**
- * Test class for KombiPlayer.
- * Verifies card management, scoring, turn status, and reset logic.
+ * Unit tests for the [KombiPlayer] class.
+ * Verifies correct initialization, mutability, and action tracking behavior.
  */
 class KombiPlayerTest {
 
     private lateinit var player: KombiPlayer
 
     /**
-     * Sets up a fresh player before each test.
+     * Initializes a fresh [KombiPlayer] before each test.
      */
-    @BeforeTest
+    @BeforeEach
     fun setUp() {
         player = KombiPlayer("TestPlayer")
     }
 
     /**
-     * Tests that a card can be drawn when the hand size is valid.
+     * Tests that the player's name is stored correctly.
      */
     @Test
-    fun testDrawCard() {
-        val card = KombiCard(CardSuit.HEARTS, CardValue.ACE)
-        player.drawCard(card)
-        assertEquals(1, player.handCards.size)
-        assertTrue(player.handCards.contains(card))
+    fun testPlayerNameIsSet() {
+        assertEquals("TestPlayer", player.name)
     }
 
     /**
-     * Tests that playCombination correctly updates the discard pile, removes cards, and adds points.
+     * Tests that the player's hand and discard pile are initially empty.
      */
     @Test
-    fun testPlayCombinationWithAction() {
-        val combo = listOf(
-            KombiCard(CardSuit.HEARTS, CardValue.FIVE),
-            KombiCard(CardSuit.HEARTS, CardValue.SIX),
-            KombiCard(CardSuit.HEARTS, CardValue.SEVEN)
-        )
-        player.handCards.addAll(combo)
-
-        val result = player.playCombination(combo, Action.COMBINATION)
-
-        assertTrue(result, "Combination should be played successfully.")
-        assertTrue(player.discardPile.contains(combo), "Combination should be added to discard pile.")
-        assertEquals(6, player.points, "COMBINATION should give 2 points per card.")
-        assertEquals(Action.COMBINATION, player.lastAction, "Last action should be COMBINATION.")
-        assertTrue(player.handCards.isEmpty(), "Played cards should be removed from hand.")
+    fun testInitialHandAndDiscardAreEmpty() {
+        assertTrue(player.hand.isEmpty(), "Hand should be empty initially.")
+        assertTrue(player.discardPile.isEmpty(), "Discard pile should be empty initially.")
     }
 
     /**
-     * Tests that passing a turn updates the hasPassed flag.
+     * Tests that performedActions is initially empty and can be updated.
      */
     @Test
-    fun testPassTurn() {
-        player.passTurn()
-        assertTrue(player.hasPassed, "Player should be marked as passed.")
+    fun testPerformedActionsTracking() {
+        assertTrue(player.performedActions.isEmpty(), "No actions should be performed at start.")
+        player.performedActions.add(Action.DRAW_CARD)
+        assertEquals(1, player.performedActions.size)
+        assertTrue(player.performedActions.contains(Action.DRAW_CARD))
     }
 
     /**
-     * Tests that reset clears all relevant player state.
+     * Tests that score is initialized to 0 and can be incremented.
      */
     @Test
-    fun testReset() {
-        player.handCards.add(KombiCard(CardSuit.SPADES, CardValue.SEVEN))
-        player.points = 10
-        player.passTurn()
-        player.discardPile.add(listOf(KombiCard(CardSuit.CLUBS, CardValue.THREE)))
-        player.lastAction = Action.TRIPLE
-
-        player.reset()
-
-        assertTrue(player.handCards.isEmpty(), "Hand should be empty after reset.")
-        assertTrue(player.discardPile.isEmpty(), "Discard pile should be empty after reset.")
-        assertEquals(0, player.points, "Points should reset to 0.")
-        assertFalse(player.hasPassed, "Player should not be marked as passed after reset.")
-        assertEquals(Action.NOACTION, player.lastAction, "Last action should reset to NOACTION.")
+    fun testScoreInitializationAndIncrement() {
+        assertEquals(0, player.score)
+        player.score += 10
+        assertEquals(10, player.score)
     }
 
     /**
-     * Tests that players with the same name are considered equal by name check.
+     * Tests that equalsByName returns true for players with same name.
      */
     @Test
     fun testHasSameNameAs() {
-        val playerA1 = KombiPlayer("Alex")
-        val playerA2 = KombiPlayer("Alex")
-        val playerB = KombiPlayer("Blake")
+        val other = KombiPlayer("TestPlayer")
+        assertTrue(player.hasSameNameAs(other))
+    }
 
-        assertTrue(playerA1.hasSameNameAs(playerA2), "Players with the same name should match.")
-        assertFalse(playerA1.hasSameNameAs(playerB), "Players with different names should not match.")
+    /**
+     * Tests that hasEmptyName returns true for blank names.
+     */
+    @Test
+    fun testHasEmptyName() {
+        val empty = KombiPlayer("")
+        val blank = KombiPlayer("   ")
+        assertTrue(empty.hasEmptyName())
+        assertTrue(blank.hasEmptyName())
+        assertFalse(player.hasEmptyName())
+    }
+
+    /**
+     * Tests that the performedActions list can be cleared after endTurn.
+     */
+    @Test
+    fun testClearPerformedActions() {
+        player.performedActions.add(Action.EXCHANGE_CARD)
+        player.performedActions.add(Action.DRAW_CARD)
+        player.performedActions.clear()
+        assertTrue(player.performedActions.isEmpty(), "Performed actions should be cleared.")
     }
 }

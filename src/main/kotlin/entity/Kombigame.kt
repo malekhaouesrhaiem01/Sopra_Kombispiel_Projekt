@@ -1,67 +1,19 @@
 package entity
+
 /**
- * Main game state for Kombi-Duell.
+ * Represents the full game state of a Kombi-Duel match.
  *
- * Tracks the players, current turn, draw pile, exchange area, and handles turn switching and game-end logic.
+ * This entity class stores the players, draw pile, and exchange area.
+ * Game logic (e.g., switching players, checking combinations) should be handled in the service layer.
  *
- * @property players The two players in the game
- * @property activePlayerIndex Index of the currently active player
- * @property drawPile The pile of remaining cards to draw from
- * @property exchangeArea The shared card exchange area
+ * @property players A list of exactly two players (index 0 and 1)
+ * @property drawPile The face-down stack of cards to draw from
+ * @property exchangeArea The pool of 3 cards used for swapping
+ * @property currentPlayerIndex Index of the currently active player
  */
-class KombiGame(val players: List<KombiPlayer>,
-                var activePlayerIndex: Int = 0,
-                val drawPile: DrawPile,
-                val exchangeArea: ExchangeArea,
-                var turnActions: Int = 0,
-                var gameOver: Boolean = false
-
-) {
-    /**
-     * Returns the currently active player.
-     *
-     * @return The player whose turn it is.
-     */
-    fun getActivePlayer(): KombiPlayer = players[activePlayerIndex]
-
-    /**
-     * Advances to the next player's turn.
-     * Resets turn-related flags such as action count and pass status.
-     */
-    fun nextPlayer() {
-        activePlayerIndex = (activePlayerIndex + 1) % 2
-        turnActions = 0
-        players[activePlayerIndex].hasPassed = false
-    }
-
-    /**
-     * Checks whether any of the game end conditions are met:
-     * - A player has no more cards in hand
-     * - All players have passed in succession
-     *
-     * @return `true` if the game should end, otherwise `false`
-     */
-    fun isGameOver(): Boolean {
-        val over = players.any { it.handCards.isEmpty() } || players.all { it.hasPassed }
-        gameOver = over
-        return over
-    }
-
-    /**
-     * Determines which of the two players has the higher score.
-     *
-     * @return A string message stating the winner and their points, or a tie message if points are equal.
-     */
-    fun calculateWinner(): String {
-        val player1 = players[0]
-        val player2 = players[1]
-
-        return when {
-            player1.points > player2.points -> "${player1.name} wins with ${player1.points} points"
-            player2.points > player1.points -> "${player2.name} wins with ${player2.points} points"
-            else -> "It's a tie! Both have ${player1.points} points"
-        }
-    }
-
-}
-
+data class KombiGame(
+    val players: List<KombiPlayer>,
+    val drawPile: MutableList<KombiCard>,
+    val exchangeArea: MutableList<KombiCard>,
+    var currentPlayerIndex: Int = 0
+)
