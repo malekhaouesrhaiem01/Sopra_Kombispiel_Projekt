@@ -6,7 +6,8 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 
 /**
- * Unit tests for [GameService] logic including game start, turn management, and game end.
+ * Unit tests for [GameService], [PlayerActionService], and refreshable logic.
+ * Uses [TestRefreshable] to ensure UI callbacks are triggered as expected.
  */
 class GameServiceTest {
 
@@ -17,7 +18,7 @@ class GameServiceTest {
     private lateinit var testRefreshable: TestRefreshable
 
     /**
-     * Sets up a clean game with two players and a registered [TestRefreshable] before each test.
+     * Sets up the game and registers [TestRefreshable] before each test.
      */
     @BeforeEach
     fun setUp() {
@@ -79,8 +80,6 @@ class GameServiceTest {
         val game = rootService.currentGame!!
         val nextPlayer = game.players[1]
         nextPlayer.performedActions.add(Action.DRAW_CARD)
-
-        // First player passes
         game.players[0].performedActions.add(Action.PASS)
 
         gameService.endTurn()
@@ -108,20 +107,17 @@ class GameServiceTest {
         val game = rootService.currentGame!!
         game.players[0].performedActions.add(Action.PASS)
         game.players[1].performedActions.add(Action.PASS)
-
-        // simulate we're on player 0's turn
         game.currentPlayerIndex = 0
+
         assertDoesNotThrow { gameService.endTurn() }
     }
 
     /**
-     * Tests that [//startGame] sets up a proper game with 7 cards per hand, 3 in exchange, and 35 in draw pile,
-     * and that UI refresh is triggered via [//refreshAfterStart].
+     * Tests that refreshAfterStart is triggered via [TestRefreshable] on game start.
      */
     @Test
-    fun testStartGameCardDistribution() {
+    fun testStartGameCardDistributionAndUIRefresh() {
         rootService.gameService.startGame("Alice", "Bob")
-
         val game = rootService.currentGame!!
 
         assertEquals(7, game.players[0].hand.size)
@@ -130,5 +126,37 @@ class GameServiceTest {
         assertEquals(35, game.drawPile.size)
 
         assertTrue(testRefreshable.refreshAfterStartCalled, "UI should refresh after game start")
+    }
+
+    /**
+     * Tests that [//addRefreshable] correctly adds a single Refreshable to all services.
+     */
+    @Test
+    fun testRootServiceSingleRefreshable() {
+        val r = TestRefreshable()
+        rootService.addRefreshable(r)
+
+        assertFalse(r.refreshAfterStartCalled)
+        rootService.gameService.onAllRefreshables { refreshAfterStart() }
+        assertTrue(r.refreshAfterStartCalled)
+        r.reset()
+
+        assertFalse(r.refreshAfterStartCalled)
+        rootService.playerActionService.onAllRefreshables { refreshAfterStart() }
+        assertTrue(r.refreshAfterStartCalled)
+    }
+
+    /**
+     * Tests that [//addRefreshables] correctly adds multiple refreshables to all services.
+     */
+    @Test
+    fun testRootServiceMultiRefreshable() {
+        val r1 = TestRefreshable()
+        val r2 = TestRefreshable()
+        rootService.addRefreshables(r1, r2)
+
+        rootService.gameService.onAllRefreshables { refreshAfterStart() }
+        assertTrue(r1.refreshAfterStartCalled)
+        assertTrue(r2.refreshAfterStartCalled)
     }
 }
