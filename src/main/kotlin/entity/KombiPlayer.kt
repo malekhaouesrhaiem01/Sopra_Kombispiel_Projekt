@@ -18,20 +18,5 @@ data class KombiPlayer(
     val discardPile: MutableList<KombiCard> = mutableListOf(),
     var score: Int = 0,
     val performedActions: MutableList<Action> = mutableListOf()
-) {
+)
 
-    /**
-     * Checks if the player's name is empty or blank.
-     *
-     * @return true if the name is empty or only whitespace
-     */
-    fun hasEmptyName(): Boolean = name.isBlank()
-
-    /**
-     * Compares this player with another to check for identical names.
-     *
-     * @param other another [KombiPlayer] to compare with
-     * @return true if both players have the same name
-     */
-    fun hasSameNameAs(other: KombiPlayer): Boolean = this.name == other.name
-}

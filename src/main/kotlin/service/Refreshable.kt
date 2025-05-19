@@ -1,64 +1,89 @@
 package service
 
+import entity.KombiCard
+import entity.KombiPlayer
 
 /**
  * This interface provides a mechanism for the service layer classes to communicate
- * (usually to the GUI classes) that certain changes have been made to the entity
- * layer, so that the user interface can be updated accordingly.
+ * with the user interface (GUI) when changes happen in the game state.
  *
- * Default (empty) implementations are provided for all methods, so that implementing
- * GUI classes only need to react to events relevant to them.
+ * Default (empty) implementations are provided for each method, so GUI implementations
+ * only need to override the methods relevant to their display logic.
  *
  * @see AbstractRefreshingService
  */
-interface Refreshable{
+interface Refreshable {
+
     /**
      * Called after a new game has been started.
-     * Should reset the UI to the initial state for the first player.
+     * Should initialize the UI for the first turn.
+     *
+     * @param players The list of players in the new game
      */
-    fun refreshAfterStart() {}
+    fun refreshAfterStart(players: List<KombiPlayer>) {}
 
     /**
      * Called when a new turn begins.
-     * Should show the active player's hand and current turn information.
+     * Should show the current player's hand and allow them to act.
+     *
+     * @param activePlayer The player whose turn it is
      */
-    fun refreshAfterTurnStart() {}
+    fun refreshAfterTurnStart(activePlayer: KombiPlayer) {}
 
     /**
      * Called after a player's turn ends.
-     * Should hide that player's hand and wait for the next player's confirmation.
+     * Should hide the current player's hand and prepare the UI for the next player.
+     *
+     * @param finishedPlayer The player who just ended their turn
      */
-    fun refreshAfterTurnEnd() {}
+    fun refreshAfterTurnEnd(finishedPlayer: KombiPlayer) {}
 
     /**
      * Called after the game ends.
-     * Should show final scores and announce the winner.
+     * Should display the winner, loser, and final scores.
+     *
+     * @param winner The player who won the game
+     * @param loser The player who lost the game
      */
-    fun refreshAfterGameEnd() {}
+    fun refreshAfterGameEnd(winner: KombiPlayer, loser: KombiPlayer) {}
 
     /**
      * Called after the active player draws a card.
-     * UI can update the hand and draw pile visually.
+     * The UI should update the draw pile and the hand.
+     *
+     * @param card The card that was drawn
      */
-    fun refreshAfterCardDrawn() {}
+    fun refreshAfterCardDrawn(card: KombiCard) {}
 
     /**
-     * Called after a card was exchanged with the exchange area.
-     * Should update both hand and exchange pool in the UI.
+     * Called after a player swaps a card with the exchange area.
+     * Should update both the player's hand and the exchange area in the UI.
+     *
+     * @param handCard The card from the player's hand
+     * @param exchangedCard The card taken from the exchange area
      */
-    fun refreshAfterCardSwapped() {}
+    fun refreshAfterCardSwapped(handCard: KombiCard, exchangedCard: KombiCard) {}
 
     /**
-     * Called after the player successfully played a valid combination.
-     * Updates the discard pile, hand, and score.
+     * Called after the player plays a valid combination of cards.
+     * Should update the discard pile, player's hand, and score display.
+     *
+     * @param player The player who played the combination
+     * @param combination The list of cards played
      */
-    fun refreshAfterCombinationPlayed() {}
+    fun refreshAfterCombinationPlayed(player: KombiPlayer, combination: List<KombiCard>) {}
 
     /**
-     * Called when a card is selected (optional, for UI feedback).
+     * Called when a player selects a card (e.g., for highlighting or interaction).
+     *
+     * @param selectedCard The card that was selected
      */
-    fun refreshAfterCardSelected() {}
+    fun refreshAfterCardSelected(selectedCard: KombiCard) {}
 
-
-
+    /**
+     * Displays a message to the user, such as announcing the winner or showing alerts.
+     *
+     * @param message The message text to display
+     */
+    fun showMessage(message: String) {}
 }

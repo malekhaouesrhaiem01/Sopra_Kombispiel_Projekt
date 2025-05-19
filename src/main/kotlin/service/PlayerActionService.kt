@@ -3,135 +3,117 @@ package service
 import entity.*
 
 /**
- * Handles all player-specific actions during a turn.
- * Supports drawing cards, trading, playing combinations, and passing.
- * Enforces all action rules using [Action] and the player's [//performedActions] list.
+ * Handles all player-specific actions during a turn in the Kombi-Duel game.
  *
- * @property rootService The central access point to game state and services
+ * Enforces turn-based rules:
+ * - Max. 2 different actions per turn (only PLAY_COMBINATION can be repeated)
+ * - No actions allowed after PASS
+ * - Multiple valid combinations (triples, sequences, etc.) can be played per turn
+ *
+ * Notifies the UI through [Refreshable] whenever a valid action occurs.
+ *
+ * @property rootService Provides access to game state and other services
  */
 class PlayerActionService(
     private val rootService: RootService
 ) : AbstractRefreshingService() {
 
-    /**
-     * Player draws a card from the draw pile.
-     */
     fun drawCard() {
         val game = rootService.currentGame ?: throw IllegalStateException("No game active.")
         val player = game.players[game.currentPlayerIndex]
-
         checkActionRules(player, Action.DRAW_CARD)
 
-        if (game.drawPile.isEmpty())
-            throw IllegalStateException("Draw pile is empty.")
-        if (player.hand.size >= 10)
-            throw IllegalStateException("Hand is full (10 cards).")
+        if (game.drawPile.isEmpty()) throw IllegalStateException("Draw pile is empty.")
+        if (player.hand.size >= 10) throw IllegalStateException("Hand is full (max 10 cards).")
 
         val card = game.drawPile.removeFirst()
         player.hand.add(card)
         player.performedActions.add(Action.DRAW_CARD)
-
-        onAllRefreshables { refreshAfterCardDrawn() }
+        onAllRefreshables { refreshAfterCardDrawn(card) }
     }
 
-    /**
-     * Player trades a hand card with one from the exchange area.
-     */
     fun tradeCard(handIndex: Int, exchangeIndex: Int) {
         val game = rootService.currentGame ?: throw IllegalStateException("No game active.")
         val player = game.players[game.currentPlayerIndex]
-
         checkActionRules(player, Action.EXCHANGE_CARD)
 
-        if (handIndex !in player.hand.indices)
-            throw IllegalArgumentException("Invalid hand card index.")
-        if (exchangeIndex !in 0..2 || exchangeIndex >= game.exchangeArea.size)
-            throw IllegalArgumentException("Invalid exchange area index.")
+        if (handIndex !in player.hand.indices) throw IllegalArgumentException("Invalid hand index.")
+        if (exchangeIndex !in game.exchangeArea.indices) throw IllegalArgumentException("Invalid exchange index.")
 
         val handCard = player.hand[handIndex]
         val exchangeCard = game.exchangeArea[exchangeIndex]
 
         player.hand[handIndex] = exchangeCard
         game.exchangeArea[exchangeIndex] = handCard
-
         player.performedActions.add(Action.EXCHANGE_CARD)
-
-        onAllRefreshables { refreshAfterCardSwapped() }
+        onAllRefreshables { refreshAfterCardSwapped(handCard, exchangeCard) }
     }
 
-    /**
-     * Player plays a valid card combination from hand.
-     */
-    fun playCombination(cards: List<KombiCard>) {
+    fun playCombinations(combos: List<List<KombiCard>>) {
         val game = rootService.currentGame ?: throw IllegalStateException("No game active.")
         val player = game.players[game.currentPlayerIndex]
+        checkActionRules(player, Action.PLAY_COMBINATION)
 
-        val actionType = determineCombinationType(cards)
-        checkActionRules(player, actionType)
+        var totalPoints = 0
+        val allCards = mutableListOf<KombiCard>()
 
-        if (!player.hand.containsAll(cards))
-            throw IllegalArgumentException("Not all selected cards are in hand.")
+        for (combo in combos) {
+            if (!player.hand.containsAll(combo)) {
+                throw IllegalArgumentException("Player does not have all cards for combination.")
+            }
 
-        player.hand.removeAll(cards)
-        player.discardPile.addAll(cards)
-        player.score += scoreCombination(cards)
-        player.performedActions.add(actionType)
+            val type = determineCombinationType(combo)
+            val points = when (type) {
+                "TRIPLE" -> 10
+                "QUADRUPLE" -> 15
+                "SEQUENCE" -> combo.size * 2
+                else -> throw IllegalArgumentException("Unknown combination type.")
+            }
 
-        onAllRefreshables { refreshAfterCombinationPlayed() }
+            totalPoints += points
+            allCards.addAll(combo)
+        }
+
+        player.hand.removeAll(allCards)
+        player.discardPile.addAll(allCards)
+        player.score += totalPoints
+
+        if (Action.PLAY_COMBINATION !in player.performedActions) {
+            player.performedActions.add(Action.PLAY_COMBINATION)
+        }
+
+        onAllRefreshables { refreshAfterCombinationPlayed(player, allCards) }
     }
-
-    /**
-     * Player chooses to pass the turn.
-     */
     fun passed() {
         val game = rootService.currentGame ?: throw IllegalStateException("No game active.")
         val player = game.players[game.currentPlayerIndex]
 
-        if (player.performedActions.isNotEmpty())
-            throw IllegalStateException("Cannot pass after performing an action.")
+        if (Action.PASS in player.performedActions) throw IllegalStateException("Player already passed this turn.")
 
         player.performedActions.add(Action.PASS)
-
-        onAllRefreshables { refreshAfterTurnEnd() }
+        onAllRefreshables { refreshAfterTurnEnd(player) }
     }
 
-    /**
-     * Ensures the action can be legally performed.
-     */
     private fun checkActionRules(player: KombiPlayer, action: Action) {
-        if (Action.PASS in player.performedActions)
-            throw IllegalStateException("Cannot perform action after passing.")
-        if (action in player.performedActions)
-            throw IllegalArgumentException("Action $action already performed.")
-        if (player.performedActions.size >= 2)
-            throw IllegalStateException("Only 2 actions allowed per turn.")
+        if (Action.PASS in player.performedActions) throw IllegalStateException("No actions allowed after passing.")
+        if (action != Action.PLAY_COMBINATION && action in player.performedActions) throw IllegalArgumentException("Action $action already performed.")
+        if (player.performedActions.size >= 2 && action !in player.performedActions) throw IllegalStateException("Max two different actions per turn.")
     }
 
-    /**
-     * Determines the combination type.
-     */
-    private fun determineCombinationType(cards: List<KombiCard>): Action {
-        if (cards.size == 3 && cards.all { it.value == cards[0].value }) return Action.PLAY_TRIPLE
-        if (cards.size == 4 && cards.all { it.value == cards[0].value }) return Action.PLAY_QUADRUPLE
+    private fun determineCombinationType(cards: List<KombiCard>): String {
+        if (cards.size == 3 && cards.all { it.value == cards[0].value }) return "TRIPLE"
+        if (cards.size == 4 && cards.all { it.value == cards[0].value }) return "QUADRUPLE"
 
         if (cards.size >= 3 && cards.all { it.suit == cards[0].suit }) {
-            val ordinals = cards.map { it.value.ordinal }.sorted()
-            val isSequential = ordinals.zipWithNext().all { it.second == it.first + 1 }
-            if (isSequential) return Action.PLAY_SEQUENCE
+            val sorted = cards.map { it.value.ordinal }.sorted()
+            for (i in 0 until sorted.size - 1) {
+                val current = sorted[i]
+                val next = sorted[i + 1]
+                if ((current + 1) % 13 != next) throw IllegalArgumentException("Not a valid sequence.")
+            }
+            return "SEQUENCE"
         }
 
         throw IllegalArgumentException("Invalid combination.")
-    }
-
-    /**
-     * Calculates the score for a played combination.
-     */
-    private fun scoreCombination(cards: List<KombiCard>): Int {
-        return when (determineCombinationType(cards)) {
-            Action.PLAY_TRIPLE -> 10
-            Action.PLAY_QUADRUPLE -> 15
-            Action.PLAY_SEQUENCE -> 2 * cards.size
-            else -> 0
-        }
     }
 }

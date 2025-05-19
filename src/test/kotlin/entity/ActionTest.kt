@@ -1,57 +1,56 @@
 package entity
 
-import org.junit.jupiter.api.*
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
- * Unit tests for the [Action] enum class.
- * Verifies the defined actions, their names, and enum order.
+ * Unit tests for the [Action] enum.
+ * Ensures all defined enum values are present, accessible, and logically consistent.
  */
 class ActionTest {
 
     /**
-     * Tests that all expected action constants exist in the enum.
+     * Tests that all expected enum constants exist and are in the correct order.
      */
     @Test
-    fun testAllEnumValuesExist() {
-        val expected = setOf(
-            Action.DRAW_CARD,
-            Action.EXCHANGE_CARD,
-            Action.PLAY_SEQUENCE,
-            Action.PLAY_TRIPLE,
-            Action.PLAY_QUADRUPLE,
-            Action.PASS
-        )
-
-        val actual = Action.values().toSet()
-
-        assertEquals(expected.size, actual.size, "Enum should contain exactly 6 values.")
-        assertTrue(actual.containsAll(expected), "Enum must contain all defined action types.")
+    fun testEnumValuesExistAndAreOrdered() {
+        val expected = listOf("DRAW_CARD", "EXCHANGE_CARD", "PLAY_COMBINATION", "PASS")
+        val actual = Action.values().map { it.name }
+        assertEquals(expected, actual)
     }
 
     /**
-     * Tests that the name of each enum constant matches its declaration.
+     * Tests that each enum constant can be accessed by valueOf.
      */
     @Test
-    fun testActionEnumNames() {
-        assertEquals("DRAW_CARD", Action.DRAW_CARD.name)
-        assertEquals("EXCHANGE_CARD", Action.EXCHANGE_CARD.name)
-        assertEquals("PLAY_SEQUENCE", Action.PLAY_SEQUENCE.name)
-        assertEquals("PLAY_TRIPLE", Action.PLAY_TRIPLE.name)
-        assertEquals("PLAY_QUADRUPLE", Action.PLAY_QUADRUPLE.name)
-        assertEquals("PASS", Action.PASS.name)
+    fun testValueOfEachAction() {
+        for (action in Action.values()) {
+            val byName = Action.valueOf(action.name)
+            assertEquals(action, byName)
+        }
     }
 
     /**
-     * Tests the ordinal order of the enum constants.
+     * Tests that all enum constants are unique and valid.
      */
     @Test
-    fun testOrdinalOrder() {
-        assertEquals(0, Action.DRAW_CARD.ordinal)
-        assertEquals(1, Action.EXCHANGE_CARD.ordinal)
-        assertEquals(2, Action.PLAY_SEQUENCE.ordinal)
-        assertEquals(3, Action.PLAY_TRIPLE.ordinal)
-        assertEquals(4, Action.PLAY_QUADRUPLE.ordinal)
-        assertEquals(5, Action.PASS.ordinal)
+    fun testEnumUniquenessAndValidity() {
+        val all = Action.values().toList()
+        val distinct = all.distinct()
+        assertEquals(all.size, distinct.size)
+        all.forEach { assertTrue(it.name.isNotBlank()) }
+    }
+
+    /**
+     * Tests specific business logic expectations, e.g. PASS should prevent further actions.
+     */
+    @Test
+    fun testBusinessLogicImplications() {
+        val nonRepeatableActions = listOf(Action.DRAW_CARD, Action.EXCHANGE_CARD, Action.PASS)
+        val repeatable = Action.PLAY_COMBINATION
+
+        assertTrue(Action.PASS in nonRepeatableActions)
+        assertTrue(repeatable !in nonRepeatableActions)
     }
 }

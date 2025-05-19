@@ -1,162 +1,180 @@
 package service
 
 import entity.*
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.*
 
 /**
- * Unit tests for [GameService], [PlayerActionService], and refreshable logic.
- * Uses [TestRefreshable] to ensure UI callbacks are triggered as expected.
+ * Full test suite for [GameService] covering all methods, branches,
+ * and error handling for complete test coverage.
  */
 class GameServiceTest {
 
     private lateinit var rootService: RootService
     private lateinit var gameService: GameService
-    private lateinit var player1: KombiPlayer
-    private lateinit var player2: KombiPlayer
-    private lateinit var testRefreshable: TestRefreshable
 
     /**
-     * Sets up the game and registers [TestRefreshable] before each test.
+     * Sets up a fresh instance of [RootService] and [GameService] before each test.
      */
     @BeforeEach
-    fun setUp() {
+    fun setup() {
         rootService = RootService()
-        gameService = rootService.gameService
-        testRefreshable = TestRefreshable()
-        rootService.addRefreshable(testRefreshable)
-
-        player1 = KombiPlayer("Alice")
-        player2 = KombiPlayer("Bob")
-
-        val game = KombiGame(
-            players = listOf(player1, player2),
-            drawPile = mutableListOf(),
-            exchangeArea = mutableListOf()
-        )
-        rootService.currentGame = game
+        gameService = GameService(rootService)
     }
 
     /**
-     * Tests that the game starts correctly with valid player names.
+     * Tests whether a new game is properly initialized with two players,
+     * 7 cards each, 3 exchange cards, and the correct draw pile.
      */
     @Test
-    fun testStartGameInitializesDecksAndHands() {
+    fun `startGame initializes game correctly`() {
         gameService.startGame("Alice", "Bob")
-        val game = rootService.currentGame!!
-
+        val game = rootService.currentGame
+        assertNotNull(game)
+        assertEquals(2, game!!.players.size)
         assertEquals(7, game.players[0].hand.size)
         assertEquals(7, game.players[1].hand.size)
         assertEquals(3, game.exchangeArea.size)
-        assertEquals(35, game.drawPile.size)
+        assertEquals(52 - 17, game.drawPile.size)
     }
 
     /**
-     * Verifies that startGame throws for blank or duplicate names.
+     * Tests that invalid player names (blank or identical) throw exceptions.
      */
     @Test
-    fun testStartGameWithInvalidNamesThrows() {
-        assertThrows(IllegalArgumentException::class.java) { gameService.startGame("", "Bob") }
-        assertThrows(IllegalArgumentException::class.java) { gameService.startGame("Bob", "Bob") }
+    fun `startGame throws for blank or duplicate names`() {
+        assertThrows<IllegalArgumentException> { gameService.startGame("", "Bob") }
+        assertThrows<IllegalArgumentException> { gameService.startGame("Alice", "") }
+        assertThrows<IllegalArgumentException> { gameService.startGame("Same", "Same") }
     }
 
     /**
-     * Verifies that starting a turn clears the active player's performed actions.
+     * Verifies that startTurn throws when no game is currently active.
      */
     @Test
-    fun testStartTurnResetsPerformedActions() {
+    fun `startTurn throws if no game active`() {
+        assertThrows<IllegalStateException> { gameService.startTurn() }
+    }
+
+    /**
+     * Verifies that startTurn  successfully accesses the current player
+     * without throwing exceptions.
+     */
+    @Test
+    fun `startTurn accesses current player`() {
+        gameService.startGame("Alice", "Bob")
         val game = rootService.currentGame!!
-        game.players[0].performedActions.add(Action.DRAW_CARD)
+        val firstPlayer = game.players[0]
         gameService.startTurn()
-        assertTrue(game.players[0].performedActions.isEmpty())
+        assertEquals(firstPlayer, game.players[game.currentPlayerIndex])
     }
 
     /**
-     * Checks that endTurn correctly switches players and clears the next player's actions.
+     * Verifies that endTurn correctly switches the active player
+     * and clears the performed actions of the new player.
      */
     @Test
-    fun testEndTurnSwitchesPlayerAndClearsActions() {
+    fun `endTurn switches to next player and clears actions`() {
+        gameService.startGame("Alice", "Bob")
         val game = rootService.currentGame!!
-        val nextPlayer = game.players[1]
-        nextPlayer.performedActions.add(Action.DRAW_CARD)
-        game.players[0].performedActions.add(Action.PASS)
+        val currentPlayer = game.players[game.currentPlayerIndex]
+        currentPlayer.performedActions.add(Action.DRAW_CARD)
+        val nextIndex = (game.currentPlayerIndex + 1) % 2
 
         gameService.endTurn()
 
-        assertEquals(1, game.currentPlayerIndex)
-        assertTrue(nextPlayer.performedActions.isEmpty())
+        assertEquals(nextIndex, game.currentPlayerIndex)
+        assertTrue(game.players[nextIndex].performedActions.isEmpty())
     }
 
     /**
-     * Verifies that endGame prints results and ends correctly when both players passed.
+     * Verifies that endTurn ends the game if both players passed consecutively.
      */
     @Test
-    fun testEndGamePrintsResultsAndTriggersRefresh() {
-        player1.score = 12
-        player2.score = 10
-
-        assertDoesNotThrow { gameService.endGame() }
-    }
-
-    /**
-     * Checks that endTurn ends the game if both players passed consecutively.
-     */
-    @Test
-    fun testEndTurnEndsGameIfBothPassed() {
+    fun `endTurn ends game if both players passed`() {
+        gameService.startGame("Alice", "Bob")
         val game = rootService.currentGame!!
-        game.players[0].performedActions.add(Action.PASS)
-        game.players[1].performedActions.add(Action.PASS)
+        val p1 = game.players[0]
+        val p2 = game.players[1]
+
+        p1.performedActions.add(Action.PASS)
+        p2.performedActions.add(Action.PASS)
         game.currentPlayerIndex = 0
 
-        assertDoesNotThrow { gameService.endTurn() }
+        gameService.endTurn()
+
+        assertNull(rootService.currentGame)
     }
 
     /**
-     * Tests that refreshAfterStart is triggered via [TestRefreshable] on game start.
+     * Tests that endGame  correctly identifies player 1 as the winner.
      */
     @Test
-    fun testStartGameCardDistributionAndUIRefresh() {
-        rootService.gameService.startGame("Alice", "Bob")
+    fun `endGame declares correct winner`() {
+        gameService.startGame("Alice", "Bob")
         val game = rootService.currentGame!!
+        game.players[0].score = 20
+        game.players[1].score = 10
 
-        assertEquals(7, game.players[0].hand.size)
-        assertEquals(7, game.players[1].hand.size)
-        assertEquals(3, game.exchangeArea.size)
-        assertEquals(35, game.drawPile.size)
+        gameService.endGame()
 
-        assertTrue(testRefreshable.refreshAfterStartCalled, "UI should refresh after game start")
+        assertNull(rootService.currentGame)
     }
 
     /**
-     * Tests that [//addRefreshable] correctly adds a single Refreshable to all services.
+     * Tests that endGame correctly identifies player 2 as the winner.
      */
     @Test
-    fun testRootServiceSingleRefreshable() {
-        val r = TestRefreshable()
-        rootService.addRefreshable(r)
+    fun `endGame declares correct winner reverse`() {
+        gameService.startGame("Alice", "Bob")
+        val game = rootService.currentGame!!
+        game.players[0].score = 5
+        game.players[1].score = 15
 
-        assertFalse(r.refreshAfterStartCalled)
-        rootService.gameService.onAllRefreshables { refreshAfterStart() }
-        assertTrue(r.refreshAfterStartCalled)
-        r.reset()
+        gameService.endGame()
 
-        assertFalse(r.refreshAfterStartCalled)
-        rootService.playerActionService.onAllRefreshables { refreshAfterStart() }
-        assertTrue(r.refreshAfterStartCalled)
+        assertNull(rootService.currentGame)
     }
 
     /**
-     * Tests that [//addRefreshables] correctly adds multiple refreshables to all services.
+     * Verifies that endGame handles tie situations correctly.
      */
     @Test
-    fun testRootServiceMultiRefreshable() {
-        val r1 = TestRefreshable()
-        val r2 = TestRefreshable()
-        rootService.addRefreshables(r1, r2)
+    fun `endGame handles tie`() {
+        gameService.startGame("Alice", "Bob")
+        val game = rootService.currentGame!!
+        game.players[0].score = 10
+        game.players[1].score = 10
 
-        rootService.gameService.onAllRefreshables { refreshAfterStart() }
-        assertTrue(r1.refreshAfterStartCalled)
-        assertTrue(r2.refreshAfterStartCalled)
+        gameService.endGame()
+
+        assertNull(rootService.currentGame)
+    }
+
+    /**
+     * Ensures that endGame throws if called without an active game.
+     */
+    @Test
+    fun `endGame throws if no game active`() {
+        assertThrows<IllegalStateException> { gameService.endGame() }
+    }
+
+    /**
+     * Ensures that endTurn throws if no game is currently active.
+     */
+    @Test
+    fun `endTurn throws if no game active`() {
+        assertThrows<IllegalStateException> { gameService.endTurn() }
+    }
+
+    /**
+     * Uses reflection to test that  createFullDeck returns a 52-card deck with unique entries.
+     */
+    @Test
+    fun `createFullDeck creates 52 unique cards`() {
+        val method = GameService::class.java.getDeclaredMethod("createFullDeck")
+        method.isAccessible = true
+        val deck = method.invoke(gameService) as List<*>
+        assertEquals(52, deck.distinct().size)
     }
 }

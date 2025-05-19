@@ -1,5 +1,7 @@
 package service
 
+import entity.KombiCard
+import entity.KombiPlayer
 
 /**
  * Dummy [Refreshable] implementation to test whether refresh methods are triggered.
@@ -31,6 +33,11 @@ class TestRefreshable : Refreshable {
     var refreshAfterCardSelectedCalled = false
         private set
 
+    var showMessageCalled = false
+        private set
+
+    var lastMessage: String? = null
+
     /**
      * Resets all refresh flags to false.
      */
@@ -43,37 +50,45 @@ class TestRefreshable : Refreshable {
         refreshAfterCombinationPlayedCalled = false
         refreshAfterGameEndCalled = false
         refreshAfterCardSelectedCalled = false
+        showMessageCalled = false
+        lastMessage = null
     }
 
-    override fun refreshAfterStart() {
+    override fun refreshAfterStart(players: List<KombiPlayer>) {
         refreshAfterStartCalled = true
     }
 
-    override fun refreshAfterTurnStart() {
+    override fun refreshAfterTurnStart(activePlayer: KombiPlayer) {
         refreshAfterTurnStartCalled = true
     }
 
-    override fun refreshAfterTurnEnd() {
+    override fun refreshAfterTurnEnd(finishedPlayer: KombiPlayer) {
         refreshAfterTurnEndCalled = true
     }
 
-    override fun refreshAfterCardDrawn() {
+    override fun refreshAfterCardDrawn(card: KombiCard) {
         refreshAfterCardDrawnCalled = true
     }
 
-    override fun refreshAfterCardSwapped() {
+    override fun refreshAfterCardSwapped(handCard: KombiCard, exchangedCard: KombiCard) {
         refreshAfterCardSwappedCalled = true
     }
 
-    override fun refreshAfterCombinationPlayed() {
+    override fun refreshAfterCombinationPlayed(player: KombiPlayer, combination: List<KombiCard>) {
         refreshAfterCombinationPlayedCalled = true
     }
 
-    override fun refreshAfterGameEnd() {
+    override fun refreshAfterGameEnd(winner: KombiPlayer, loser: KombiPlayer) {
         refreshAfterGameEndCalled = true
     }
 
-    override fun refreshAfterCardSelected() {
+    override fun refreshAfterCardSelected(selectedCard: KombiCard) {
         refreshAfterCardSelectedCalled = true
     }
+
+    override fun showMessage(message: String) {
+        showMessageCalled = true
+        lastMessage = message
+    }
 }
+

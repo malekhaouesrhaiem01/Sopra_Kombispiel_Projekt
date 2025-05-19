@@ -11,17 +11,13 @@ package entity
  *
  * @property DRAW_CARD the player draws one card from the draw pile
  * @property EXCHANGE_CARD the player swaps a hand card with one from the exchange area
- * @property PLAY_SEQUENCE the player plays a valid sequence of cards (same suit, ordered)
- * @property PLAY_TRIPLE the player plays three cards of the same value
- * @property PLAY_QUADRUPLE the player plays four cards of the same value
+ * @property PLAY_COMBINATION when the play plays sequence/triple/quadruple
  * @property PASS the player voluntarily skips the turn; no further actions allowed
  */
 enum class Action {
     DRAW_CARD,
     EXCHANGE_CARD,
-    PLAY_SEQUENCE,
-    PLAY_TRIPLE,
-    PLAY_QUADRUPLE,
+    PLAY_COMBINATION,
     PASS
 }
 
