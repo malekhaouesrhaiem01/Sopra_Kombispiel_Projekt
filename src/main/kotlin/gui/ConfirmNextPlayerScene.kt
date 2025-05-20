@@ -17,7 +17,7 @@ class ConfirmNextPlayerScene(
 ) : MenuScene(width = 500, height = 300), Refreshable {
 
     /**
-     * Label displaying the title "Turn Ended!"
+     * Label displaying the title "Turn Ended!".
      */
     private val titleLabel = Label(
         width = 500, height = 50,
@@ -60,6 +60,7 @@ class ConfirmNextPlayerScene(
     }
 
     init {
+        background = ColorVisual(255, 255, 255)
         opacity = 1.0
         addComponents(titleLabel, infoLabel, continueButton, quitButton)
     }

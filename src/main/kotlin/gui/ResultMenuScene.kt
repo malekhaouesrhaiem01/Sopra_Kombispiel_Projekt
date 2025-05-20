@@ -28,7 +28,7 @@ class ResultMenuScene(
     private val headlineLabel = Label(
         width = 600, height = 50, posX = 0, posY = 30,
         text = "Game Over!",
-        font = Font(size = 30, color = Color(64,64,64))
+        font = Font(size = 30, color = Color(64, 64, 64))
     )
 
     /**
@@ -85,6 +85,7 @@ class ResultMenuScene(
      * Adds all UI components to the scene on initialization.
      */
     init {
+        background = ColorVisual(255, 255, 255)
         opacity = 0.95
         addComponents(
             headlineLabel,

@@ -3,19 +3,18 @@ package gui
 import entity.KombiPlayer
 import service.RootService
 import tools.aqua.bgw.core.BoardGameApplication
-import kotlin.system.exitProcess
 
 /**
  * Central class responsible for switching between all scenes in the application.
  *
  * Handles transitions between:
  * - [NewGameMenuScene] for entering player names
- * - [GameScene] for playing the game
+ * - [GameScene] for gameplay
  * - [ConfirmNextPlayerScene] between turns
- * - [ResultMenuScene] after game ends
+ * - [ResultMenuScene] after the game ends
  *
- * @property application The [BoardGameApplication] instance used to show scenes.
- * @property rootService The shared [RootService] containing game logic and state.
+ * @property application The main [BoardGameApplication] instance
+ * @property rootService The shared [RootService] containing game logic and state
  */
 class ViewSwitcher(
     private val application: BoardGameApplication,
@@ -26,11 +25,10 @@ class ViewSwitcher(
      * Displays the menu scene to start a new game.
      */
     fun showNewGameMenu() {
-        println("🟢 Showing NewGameMenuScene")
         val newGameScene = NewGameMenuScene(rootService)
 
         newGameScene.quitButton.onMouseClicked = {
-            exitProcess(0)
+            kotlin.system.exitProcess(0)
         }
 
         newGameScene.startButton.onMouseClicked = {
@@ -39,9 +37,8 @@ class ViewSwitcher(
 
             if (name1.isNotEmpty() && name2.isNotEmpty() && name1 != name2) {
                 rootService.gameService.startGame(name1, name2)
+                application.hideMenuScene() // ✅ Hides the menu before showing game
                 showGameScene()
-            } else {
-                // TODO: Optionally show error dialog
             }
         }
 
@@ -66,7 +63,7 @@ class ViewSwitcher(
     fun showConfirmNextPlayerScene(playerName: String) {
         val confirmScene = ConfirmNextPlayerScene(playerName)
         confirmScene.continueButton.onMouseClicked = { showGameScene() }
-        confirmScene.quitButton.onMouseClicked = { exitProcess(0) }
+        confirmScene.quitButton.onMouseClicked = { kotlin.system.exitProcess(0) }
         application.showMenuScene(confirmScene)
     }
 
@@ -77,7 +74,6 @@ class ViewSwitcher(
      * @param loser The player who lost the game.
      */
     fun showResultScene(winner: KombiPlayer, loser: KombiPlayer) {
-
         val resultScene = ResultMenuScene(rootService)
         resultScene.refreshAfterGameEnd(winner, loser)
 
@@ -86,7 +82,7 @@ class ViewSwitcher(
         }
 
         resultScene.quitButton.onMouseClicked = {
-            exitProcess(0)
+            kotlin.system.exitProcess(0)
         }
 
         application.showMenuScene(resultScene)

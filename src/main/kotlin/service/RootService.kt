@@ -9,11 +9,6 @@ import entity.KombiGame
  */
 
 class RootService {
-    /**
-     * Central access point for changing scenes in the GUI.
-     * Must be set by the main application after creating [ViewSwitcher].
-     */
-    var viewSwitcher: ViewSwitcher? = null
 
     /**
      * The currently active Kombi-Duel game. Can be `null` if not started yet.

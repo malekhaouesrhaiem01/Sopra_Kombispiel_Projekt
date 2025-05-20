@@ -6,7 +6,7 @@ import gui.SopraApplication
  * Once the application is closed, it prints a message indicating the end of the application.
  */
 fun main() {
-    println("🚀 Launching app...") // MUST print this
-    SopraApplication().show()
-    println("👋 Application ended")
+    println("Launching Kombi-Duell")
+    gui.SopraApplication().show()
+    println(" Application closed")
 }
