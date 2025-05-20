@@ -1,209 +1,257 @@
 package gui
 
 import entity.KombiCard
-import entity.KombiGame
+import entity.KombiPlayer
 import service.Refreshable
 import service.RootService
-import tools.aqua.bgw.core.BoardGameScene
-import tools.aqua.bgw.core.MenuScene
+import tools.aqua.bgw.components.container.CardStack
+import tools.aqua.bgw.components.container.LinearLayout
+import tools.aqua.bgw.components.gamecomponentviews.CardView
+import tools.aqua.bgw.components.gamecomponentviews.GameComponentView
 import tools.aqua.bgw.components.uicomponents.*
-import tools.aqua.bgw.visual.ColorVisual
+import tools.aqua.bgw.core.*
 import tools.aqua.bgw.util.Font
+import tools.aqua.bgw.visual.ColorVisual
 
 /**
- * The main game scene displaying the current state of the Kombi-Duell game.
- * It includes the opponent's hand, the exchange pile, draw pile, discard pile,
- * current player’s hand, and action buttons.
+ * This is the main scene where the actual game takes place.
+ * We display both hands (player + opponent), the draw pile, the discard pile,
+ * the exchange area, and all action buttons (play, draw, trade, skip).
  *
- * @property rootService Reference to the [RootService], giving access to services and game state.
- * @property cardImageLoader Utility to load images for cards.
+ * It also handles most of the click logic like selecting cards or triggering trades.
+ *
+ * @param rootService Reference to the game logic (backend services).
+ * @param cardImageLoader Helper class to load card images from the sprite sheet.
  */
 class GameScene(
     private val rootService: RootService,
     private val cardImageLoader: CardImageLoader
 ) : BoardGameScene(1920, 1080), Refreshable {
 
-    private val currentPlayerHandView = CardArea<KombiCard>(
-        posX = 100, posY = 800, width = 1720, height = 200,
-        layout = CardArea.Layout.HORIZONTAL
+    /** Whether we’re currently trading a card. */
+    private var tradeMode = false
+
+    /** Whether the player is currently selecting cards to play a combination. */
+    private var playMode = false
+
+    /** Index of selected hand card for trading. */
+    private var selectedHandIndex: Int? = null
+
+    /** Index of selected exchange area card for trading. */
+    private var selectedExchangeIndex: Int? = null
+
+    /** Indices of cards selected to play as a combination. */
+    private val selectedCards = mutableListOf<Int>()
+
+    /** Horizontal layout for the current player’s hand (bottom of the screen). */
+    val playerHand = LinearLayout<GameComponentView>(
+        posX = 830, posY = 700, width = 300, height = 200,
+        spacing = -60,
+        visual = ColorVisual(Color.WHITE).apply { transparency = 0.0 },
+        orientation = Orientation.HORIZONTAL,
+        alignment = Alignment.TOP_CENTER
     )
 
-    private val opponentHandView = CardArea<KombiCard>(
-        posX = 100, posY = 40, width = 1720, height = 200,
-        layout = CardArea.Layout.HORIZONTAL
+    /** Hidden layout for the opponent’s hand (top of the screen). */
+    val opponentHand = LinearLayout<GameComponentView>(
+        posX = 830, posY = 100, width = 300, height = 200,
+        spacing = 0,
+        visual = ColorVisual(Color.WHITE).apply { transparency = 0.0 },
+        orientation = Orientation.HORIZONTAL,
+        alignment = Alignment.TOP_LEFT
     )
 
-    private val exchangePileView = CardArea<KombiCard>(
-        posX = 860, posY = 440, width = 200, height = 200,
-        layout = CardArea.Layout.STACKED
+    /** Button to skip the turn (does nothing here yet). */
+    val skipButton = Button(
+        posX = 1400, posY = 750, width = 110, height = 45,
+        text = "Skip",
+        font = Font(size = 20, color = Color.BLACK, family = "Arial"),
+        alignment = Alignment.CENTER,
+        isWrapText = false,
+        visual = ColorVisual(Color.WHITE)
     )
 
-    private val drawPileCountLabel = Label(
-        text = "Draw pile: 0",
-        posX = 1160, posY = 500,
-        width = 200, height = 50,
-        font = Font.defaultFont(24)
-    )
-
-    private val discardPileView = CardArea<KombiCard>(
-        posX = 1460, posY = 440, width = 300, height = 200,
-        layout = CardArea.Layout.HORIZONTAL
-    )
-
-    private val drawButton = Button("Draw Card", posX = 100, posY = 700, width = 200, height = 50).apply {
+    /** Button to enter play mode and start selecting cards for a combination. */
+    val playCombinationButton = Button(
+        posX = 1400, posY = 840, width = 110, height = 45,
+        text = "Play",
+        font = Font(size = 20, color = Color.BLACK, family = "Arial"),
+        alignment = Alignment.CENTER,
+        isWrapText = false,
+        visual = ColorVisual(Color.WHITE)
+    ).apply {
         onMouseClicked = {
-            rootService.playerActionService.drawCard()
+            playMode = true
+            selectedCards.clear()
         }
     }
 
-    private val tradeButton = Button("Trade Card", posX = 320, posY = 700, width = 200, height = 50).apply {
+    /** Button to confirm the selected cards and actually play the combination. */
+    val confirmPlayButton = Button(
+        posX = 1400, posY = 900, width = 110, height = 45,
+        text = "Confirm",
+        font = Font(size = 20, color = Color.BLACK, family = "Arial"),
+        alignment = Alignment.CENTER,
+        isWrapText = false,
+        visual = ColorVisual(Color(0xCCCCCC))
+    ).apply {
         onMouseClicked = {
-            // selection handled via selectedCard
-            selectedCard?.let { selected ->
-                rootService.playerActionService.tradeCard(selected)
-                selectedCard = null
+            val game = rootService.currentGame
+            if (game != null) {
+                val player = game.players[game.currentPlayerIndex]
+                if (playMode && selectedCards.isNotEmpty()) {
+                    val selectedCardList = selectedCards.mapNotNull { index -> player.hand.getOrNull(index) }
+                    rootService.playerActionService.playCombinations(listOf(selectedCardList))
+                    selectedCards.clear()
+                    playMode = false
+                }
             }
         }
     }
 
-    private val playButton = Button("Play Combination", posX = 540, posY = 700, width = 200, height = 50).apply {
+    /** Button to start the trade process (select one from hand, then from exchange). */
+    val tradeButton = Button(
+        posX = 1400, posY = 660, width = 110, height = 45,
+        text = "Trade",
+        font = Font(size = 20, color = Color.BLACK, family = "Arial"),
+        alignment = Alignment.CENTER,
+        isWrapText = false,
+        visual = ColorVisual(Color.WHITE)
+    ).apply {
         onMouseClicked = {
-            if (selectedCards.isNotEmpty()) {
-                rootService.playerActionService.playCombinations(listOf(selectedCards.toList()))
-                selectedCards.clear()
-            }
+            tradeMode = true
+            selectedHandIndex = null
+            selectedExchangeIndex = null
         }
     }
 
-    private val passButton = Button("Pass", posX = 760, posY = 700, width = 200, height = 50).apply {
-        onMouseClicked = {
-            rootService.playerActionService.passed()
-        }
-    }
+    /** Stack for the draw pile (cards still to be drawn). */
+    val drawPile = CardStack<CardView>(
+        posX = 1600, posY = 420, width = 130, height = 200,
+        alignment = Alignment.CENTER,
+        visual = ColorVisual(Color.WHITE).apply { transparency = 0.0 }
+    )
 
-    private val selectedCards: MutableSet<KombiCard> = mutableSetOf()
-    private var selectedCard: KombiCard? = null
+    /** Stack for played combinations (shown face up). */
+    val discardPile = CardStack<CardView>(
+        posX = 300, posY = 600, width = 130, height = 200,
+        alignment = Alignment.CENTER,
+        visual = ColorVisual(Color.WHITE).apply { transparency = 0.0 }
+    )
+
+    /** The three exchange cards (visible and clickable for trading). */
+    val tradeAreas = listOf(
+        CardView(posX = 600, posY = 400, width = 130, height = 200,
+            front = ColorVisual(Color(0xFFFEFE)), back = ColorVisual(Color(0xB4B4B4))),
+        CardView(posX = 900, posY = 400, width = 130, height = 200,
+            front = ColorVisual(Color(0xF3F3F3)), back = ColorVisual(Color(0xB4B4B4))),
+        CardView(posX = 1200, posY = 400, width = 130, height = 200,
+            front = ColorVisual(Color(0xEBEBEB)), back = ColorVisual(Color(0xB4B4B4)))
+    )
 
     init {
-        background = ColorVisual.LIGHT_GRAY
+        // Connect exchange card clicks
+        tradeAreas.forEachIndexed { index, view ->
+            view.onMouseClicked = {
+                if (tradeMode) {
+                    selectedExchangeIndex = index
+                    tryTrade()
+                }
+            }
+        }
 
         addComponents(
-            currentPlayerHandView,
-            opponentHandView,
-            exchangePileView,
-            discardPileView,
-            drawPileCountLabel,
-            drawButton,
+            playerHand,
+            opponentHand,
+            skipButton,
+            playCombinationButton,
+            confirmPlayButton,
             tradeButton,
-            playButton,
-            passButton
+            drawPile,
+            discardPile,
+            *tradeAreas.toTypedArray()
         )
+    }
 
-        currentPlayerHandView.onCardClicked = { card ->
-            if (selectedCards.contains(card)) {
-                selectedCards.remove(card)
-                currentPlayerHandView.unhighlightCard(card)
-            } else {
-                selectedCards.add(card)
-                currentPlayerHandView.highlightCard(card)
-            }
-            rootService.refreshables.forEach { it.refreshAfterCardSelected(card) }
+    /**
+     * Called when both a hand card and an exchange card are selected.
+     * Performs the trade and resets selection.
+     */
+    private fun tryTrade() {
+        val game = rootService.currentGame ?: return
+        if (selectedHandIndex != null && selectedExchangeIndex != null) {
+            rootService.playerActionService.tradeCard(
+                handIndex = selectedHandIndex!!,
+                exchangeIndex = selectedExchangeIndex!!
+            )
+            tradeMode = false
+            selectedHandIndex = null
+            selectedExchangeIndex = null
         }
     }
 
     /**
-     * Refresh the scene after a new game starts or turn begins.
-     * Updates all visual components.
-     *
-     * @param game The current [KombiGame] instance.
+     * Completely rebuilds the player hand and opponent hand visually.
+     * Also clears and redraws the selected card visuals.
      */
-    override fun refreshAfterStartGame(game: KombiGame) {
-        refreshGameState(game)
-    }
-
-    /**
-     * Refreshes visual state after a card is selected.
-     *
-     * @param card The [KombiCard] that was clicked.
-     */
-    override fun refreshAfterCardSelected(card: KombiCard) {
-        // optional visual feedback or validation logic
-    }
-
-    /**
-     * Refreshes the GUI with updated game state.
-     *
-     * @param game The [KombiGame] to use for updates.
-     */
-    private fun refreshGameState(game: KombiGame) {
+    fun refreshDisplay() {
+        println(" refreshDisplay() called")
+        val game = rootService.currentGame ?: return
         val currentPlayer = game.players[game.currentPlayerIndex]
+        playerHand.clear()
+        opponentHand.clear()
+
+        currentPlayer.hand.forEachIndexed { index, card ->
+            val cardView = CardView(
+                width = 80,
+                height = 120,
+                front = cardImageLoader.frontImageFor(card.suit, card.value),
+                back = cardImageLoader.backImage
+            ).apply {
+                onMouseClicked = {
+                    if (playMode) {
+                        selectedCards.add(index)
+                    } else if (tradeMode) {
+                        selectedHandIndex = index
+                        tryTrade()
+                    }
+                }
+            }
+            playerHand.add(cardView)
+        }
+
         val opponent = game.players[(game.currentPlayerIndex + 1) % 2]
-
-        currentPlayerHandView.clear()
-        currentPlayer.hand.forEach { card ->
-            currentPlayerHandView.add(card, cardImageLoader.frontImageFor(card))
-        }
-
-        opponentHandView.clear()
         repeat(opponent.hand.size) {
-            opponentHandView.add(KombiCard.DUMMY, cardImageLoader.backImage())
-        }
-
-        exchangePileView.clear()
-        game.exchangePile.forEach {
-            exchangePileView.add(it, cardImageLoader.frontImageFor(it))
-        }
-
-        discardPileView.clear()
-        game.discardPile.forEach { combo ->
-            combo.forEach { card ->
-                discardPileView.add(card, cardImageLoader.frontImageFor(card))
-            }
-        }
-
-        drawPileCountLabel.text = "Draw pile: ${game.drawPile.size}"
-    }
-
-    /**
-     * Refreshes the discard pile after a combination is played.
-     *
-     * @param player The player who played the combination.
-     * @param cards The cards that were played.
-     */
-    override fun refreshAfterCombinationPlayed(player: entity.KombiPlayer, cards: List<KombiCard>) {
-        rootService.currentGame?.let { refreshGameState(it) }
-    }
-
-    /**
-     * Refresh the whole board after a new turn.
-     *
-     * @param game The [KombiGame] instance.
-     */
-    override fun refreshAfterStartTurn(game: KombiGame) {
-        refreshGameState(game)
-    }
-
-    /**
-     * Triggered at the end of a turn.
-     *
-     * @param game The [KombiGame] state after ending the turn.
-     */
-    override fun refreshAfterEndTurn(game: KombiGame) {
-        refreshGameState(game)
-    }
-
-    /**
-     * When the game ends, transition to ResultScene.
-     *
-     * @param winner The winning [KombiPlayer].
-     * @param loser The losing [KombiPlayer].
-     */
-    override fun refreshAfterGameEnd(winner: entity.KombiPlayer, loser: entity.KombiPlayer) {
-        rootService.currentGame = null
-        rootService.refreshables.forEach {
-            if (it is MenuScene) {
-                rootService.currentMenuScene = it
-            }
+            val hiddenCard = CardView(
+                width = 80,
+                height = 120,
+                front = cardImageLoader.blankImage,
+                back = cardImageLoader.backImage
+            )
+            opponentHand.add(hiddenCard)
         }
     }
+
+    // Below: refresh methods from the Refreshable interface.
+    // Most of them just call refreshDisplay() to update the view.
+
+    override fun refreshAfterStart(players: List<KombiPlayer>) {}
+    override fun refreshAfterTurnStart(activePlayer: KombiPlayer) {
+        refreshDisplay()
+    }
+    override fun refreshAfterTurnEnd(finishedPlayer: KombiPlayer) {
+        refreshDisplay()
+    }
+    override fun refreshAfterGameEnd(winner: KombiPlayer, loser: KombiPlayer) {}
+    override fun refreshAfterCardDrawn(card: KombiCard) {
+        refreshDisplay()
+    }
+    override fun refreshAfterCardSwapped(handCard: KombiCard, exchangedCard: KombiCard) {
+        refreshDisplay()
+    }
+    override fun refreshAfterCombinationPlayed(player: KombiPlayer, combination: List<KombiCard>) {
+        refreshDisplay()
+    }
+    override fun refreshAfterCardSelected(selectedCard: KombiCard) {}
+    override fun showMessage(message: String) {}
 }

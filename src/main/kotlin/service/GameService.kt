@@ -14,12 +14,6 @@ class GameService(
 
     /**
      * Starts a new Kombi-Duel game with the given player names.
-     * Initializes hands, exchange area, draw pile, and sets the first player.
-     * Also triggers a refresh of the UI for game start.
-     *
-     * @param player1Name Name of the first player (must not be blank or equal to player2Name)
-     * @param player2Name Name of the second player
-     * @throws IllegalArgumentException if names are blank or identical
      */
     fun startGame(player1Name: String, player2Name: String) {
         require(player1Name.isNotBlank() && player2Name.isNotBlank()) {
@@ -33,7 +27,6 @@ class GameService(
         val player2 = KombiPlayer(name = player2Name)
 
         val fullDeck = createFullDeck()
-
         val handCardsP1 = fullDeck.take(7)
         val handCardsP2 = fullDeck.drop(7).take(7)
         val exchangeCards = fullDeck.drop(14).take(3)
@@ -55,9 +48,6 @@ class GameService(
 
     /**
      * Prepares the current player's turn.
-     * Ensures the game is active and triggers the UI update for the start of the turn.
-     *
-     * @throws IllegalStateException if no game is active
      */
     fun startTurn() {
         val game = rootService.currentGame ?: throw IllegalStateException("No game is active.")
@@ -66,18 +56,13 @@ class GameService(
     }
 
     /**
-     * Ends the current player's turn.
-     * If both players have passed consecutively, the game ends.
-     * Otherwise, switches to the next player and resets their performed actions.
-     *
-     * @throws IllegalStateException if no game is active
+     * Ends the current player's turn and switches to the next player.
      */
     fun endTurn() {
         val game = rootService.currentGame ?: throw IllegalStateException("No game is active.")
 
         val pastIndex = game.currentPlayerIndex
         val pastPlayer = game.players[pastIndex]
-
         val nextIndex = (pastIndex + 1) % 2
         val nextPlayer = game.players[nextIndex]
 
@@ -88,23 +73,19 @@ class GameService(
 
         game.currentPlayerIndex = nextIndex
         nextPlayer.performedActions.clear()
-
         onAllRefreshables { refreshAfterTurnEnd(pastPlayer) }
     }
 
     /**
-     * Ends the current Kombi-Duel game.
-     * Determines the winner based on player scores and notifies the UI.
-     *
-     * @throws IllegalStateException if no game is currently active
+     * Ends the game and notifies refreshables of the result.
      */
     fun endGame() {
         val game = rootService.currentGame ?: throw IllegalStateException("No game is currently active.")
         val player1 = game.players[0]
         val player2 = game.players[1]
 
-        val winner: KombiPlayer
-        val loser: KombiPlayer
+        val winner: KombiPlayer?
+        val loser: KombiPlayer?
         val message: String
 
         when {
@@ -129,9 +110,6 @@ class GameService(
         }
 
         rootService.currentGame = null
-        rootService.viewSwitcher?.showResultScene(winner, loser)
-
-
         onAllRefreshables {
             refreshAfterGameEnd(winner, loser)
             showMessage(message)
@@ -139,9 +117,7 @@ class GameService(
     }
 
     /**
-     * Generates and returns a full shuffled deck of 52 unique KombiCards.
-     *
-     * @return A list of shuffled [KombiCard]s
+     * Creates a full 52-card deck, one of each suit and value.
      */
     private fun createFullDeck(): List<KombiCard> {
         val deck = mutableListOf<KombiCard>()
@@ -150,6 +126,6 @@ class GameService(
                 deck.add(KombiCard(suit, value))
             }
         }
-        return deck.shuffled().toMutableList()
+        return deck.shuffled()
     }
 }

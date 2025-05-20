@@ -1,120 +1,140 @@
 package gui
 
-import service.RootService
+import entity.KombiCard
+import entity.KombiPlayer
 import service.Refreshable
-import tools.aqua.bgw.core.MenuScene
 import tools.aqua.bgw.components.uicomponents.*
 import tools.aqua.bgw.util.Font
 import tools.aqua.bgw.visual.ColorVisual
 import tools.aqua.bgw.core.Color
-import kotlin.system.exitProcess
+import tools.aqua.bgw.core.MenuScene
 
 /**
- * The start menu scene for Kombi-Duell.
- * Lets users input two player names and start the game.
+ * This is the menu that shows up at the beginning of the game.
+ * Players can enter their names and hit the "Start Game" button.
+ * If something is invalid, we show an error message.
  *
- * @property rootService Central service layer access.
+ * @param application Reference to the main [SopraApplication], so we can start the game and switch scenes.
  */
 class NewGameMenuScene(
-    private val rootService: RootService
-) : MenuScene(width = 600, height = 400), Refreshable {
+    private val application: SopraApplication
+) : MenuScene(width = 1280, height = 720), Refreshable {
 
-    val titleLabel = Label(
-        width = 600, height = 50,
-        posX = 0, posY = 30,
+    /** Big headline at the top of the screen. */
+    private val headlineLabel = Label(
+        posX = 440, posY = 80,
+        width = 400, height = 50,
         text = "Kombi-Duell",
-        font = Font(size = 30)
+        font = Font(size = 32, fontWeight = Font.FontWeight.BOLD)
     )
 
-    val p1Label = Label(
-        width = 100, height = 35,
-        posX = 100, posY = 100,
-        text = "Player 1:"
+    /** Subtext asking players to enter their names. */
+    private val subHeadlineLabel = Label(
+        posX = 440, posY = 140,
+        width = 400, height = 30,
+        text = "Spieler-Namen eingeben",
+        font = Font(size = 18, color = Color(80, 80, 80))
     )
 
-    val p2Label = Label(
-        width = 100, height = 35,
-        posX = 100, posY = 150,
-        text = "Player 2:"
+    /** Label for player 1 input field. */
+    private val player1Label = Label(
+        posX = 440, posY = 200,
+        width = 150, height = 30,
+        text = "Spieler 1:",
+        font = Font(size = 16, fontWeight = Font.FontWeight.BOLD)
     )
 
-    /**
-     * Input field for Player 1.
-     */
-    val p1Input: TextField = TextField(
-        width = 200, height = 35,
-        posX = 220, posY = 100,
-        text = ""
+    /** Text field where player 1 types their name. */
+    val player1NameField = TextField(
+        posX = 600, posY = 200,
+        width = 300, height = 40,
+        prompt = "Name Spieler 1",
+        font = Font(size = 16)
     )
 
-    /**
-     * Input field for Player 2.
-     */
-    val p2Input: TextField = TextField(
-        width = 200, height = 35,
-        posX = 220, posY = 150,
-        text = ""
+    /** Label for player 2 input field. */
+    private val player2Label = Label(
+        posX = 440, posY = 260,
+        width = 150, height = 30,
+        text = "Spieler 2:",
+        font = Font(size = 16, fontWeight = Font.FontWeight.BOLD)
     )
 
-    /**
-     * Button to quit the application.
-     */
-    val quitButton = Button(
-        width = 140, height = 40,
-        posX = 100, posY = 250,
-        text = "Quit"
-    ).apply {
-        visual = ColorVisual(221, 136, 136)
-        onMouseClicked = { exitProcess(0) }
-    }
+    /** Text field where player 2 types their name. */
+    val player2NameField = TextField(
+        posX = 600, posY = 260,
+        width = 300, height = 40,
+        prompt = "Spieler 2",
+        font = Font(size = 16)
+    )
 
-    /**
-     * Button to start the game after validating inputs.
-     */
+    /** This label is used to show any validation or exception errors. */
+    private val errorLabel = Label(
+        posX = 465, posY = 320,
+        width = 350, height = 30,
+        text = "",
+        font = Font(size = 14, color = Color.RED)
+    )
+
+    /** The "Start Game" button. When clicked, we try to start the game. */
     val startButton = Button(
-        width = 140, height = 40,
-        posX = 280, posY = 250,
-        text = "Start"
-    ).apply {
-        visual = ColorVisual(136, 221, 136)
-        isDisabled = true
+        posX = 540, posY = 380,
+        width = 200, height = 50,
+        text = "Spiel starten",
+        font = Font(size = 18, fontWeight = Font.FontWeight.BOLD, color = Color.WHITE),
+        visual = ColorVisual(60, 179, 113)
+    )
 
-        onMouseClicked = {
-            val name1 = p1Input.text.trim()
-            val name2 = p2Input.text.trim()
+    init {
+        background = ColorVisual(235, 235, 235)
+
+        addComponents(
+            headlineLabel,
+            subHeadlineLabel,
+            player1Label,
+            player1NameField,
+            player2Label,
+            player2NameField,
+            errorLabel,
+            startButton
+        )
+
+        // When you click "Spiel starten"
+        startButton.onMouseClicked = {
+            val p1 = player1NameField.text.trim()
+            val p2 = player2NameField.text.trim()
 
             try {
-                rootService.gameService.startGame(name1, name2)
-                val nextPlayerName = rootService.currentGame
-                    ?.players
-                    ?.get(rootService.currentGame!!.currentPlayerIndex)
-                    ?.name ?: "Player"
-                rootService.viewSwitcher?.showConfirmNextPlayerScene(nextPlayerName)
+                // Try to start the game
+                errorLabel.text = ""
+                application.rootService.gameService.startGame(p1, p2)
+                application.showConfirmNextPlayerScene()
             } catch (e: IllegalArgumentException) {
-                println("Invalid input: ${e.message}")
+                // Probably empty names or same name twice
+                errorLabel.text = e.message ?: "Ein ungültiger Name wurde eingegeben."
+            } catch (e: Exception) {
+                // Something else went wrong
+                errorLabel.text = "Fehler: ${e.localizedMessage}"
+                e.printStackTrace()
             }
         }
     }
 
-    init {
-        println("🟢 NewGameMenuScene created")
+    // These are unused here, but needed to implement Refreshable
+    override fun refreshAfterStart(players: List<KombiPlayer>) {}
+    override fun refreshAfterTurnStart(activePlayer: KombiPlayer) {}
+    override fun refreshAfterTurnEnd(finishedPlayer: KombiPlayer) {}
+    override fun refreshAfterGameEnd(winner: KombiPlayer, loser: KombiPlayer) {}
+    override fun refreshAfterCardDrawn(card: KombiCard) {}
+    override fun refreshAfterCardSwapped(handCard: KombiCard, exchangedCard: KombiCard) {}
+    override fun refreshAfterCombinationPlayed(player: KombiPlayer, combination: List<KombiCard>) {}
+    override fun refreshAfterCardSelected(selectedCard: KombiCard) {}
 
-        // Event listeners (after both inputs are declared)
-        p1Input.onKeyPressed = {
-            startButton.isDisabled = p1Input.text.isBlank() || p2Input.text.isBlank()
-        }
-
-        p2Input.onKeyPressed = {
-            startButton.isDisabled = p1Input.text.isBlank() || p2Input.text.isBlank()
-        }
-
-        opacity = 1.0
-        background = ColorVisual(Color.WHITE) // Optional: makes sure screen isn't black
-        addComponents(
-            titleLabel,
-            p1Label, p1Input,
-            p2Label, p2Input,
-            startButton, quitButton
-        )
+    /**
+     * If something goes wrong elsewhere ,and we need to show a message,
+     * this function will put it into the red error label.
+     */
+    override fun showMessage(message: String) {
+        errorLabel.text = message
     }
 }
