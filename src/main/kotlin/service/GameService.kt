@@ -71,10 +71,14 @@ class GameService(
             return
         }
 
+        // First: notify the GUI to refresh with the past player
+        onAllRefreshables { refreshAfterTurnEnd(pastPlayer) }
+
+        // Then switch to next player
         game.currentPlayerIndex = nextIndex
         nextPlayer.performedActions.clear()
-        onAllRefreshables { refreshAfterTurnEnd(pastPlayer) }
     }
+
 
     /**
      * Ends the game and notifies refreshables of the result.

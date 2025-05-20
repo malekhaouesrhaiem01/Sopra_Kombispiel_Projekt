@@ -68,8 +68,7 @@ class ConfirmNextPlayerScene(
         )
 
         continueButton.onMouseClicked = {
-            application.hideMenuScene() // <<< IMPORTANT
-            application.rootService.gameService.startTurn()
+            application.hideMenuScene()
             application.showGameSceneView()
         }
 

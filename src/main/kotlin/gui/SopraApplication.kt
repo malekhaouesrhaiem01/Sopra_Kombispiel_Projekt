@@ -18,7 +18,7 @@ class SopraApplication : BoardGameApplication("Kombi-Duell") {
 
     /** All game scenes */
     private val newGameMenuScene = NewGameMenuScene(this)
-    private val gameScene = GameScene(rootService,cardImageLoader)
+    private val gameScene = GameScene(rootService,cardImageLoader,this)
     private val confirmNextPlayerScene = ConfirmNextPlayerScene(this)
     private val resultMenuScene = ResultMenuScene(this)
 
@@ -37,6 +37,7 @@ class SopraApplication : BoardGameApplication("Kombi-Duell") {
 
     /** Shows the main game scene */
     fun showGameSceneView() {
+        rootService.gameService.startTurn()
         showGameScene(gameScene)
     }
 
@@ -49,7 +50,11 @@ class SopraApplication : BoardGameApplication("Kombi-Duell") {
     fun showConfirmNextPlayerScene() {
         showMenuScene(confirmNextPlayerScene)
     }
-
+    /** Shows a message when called */
+    fun showMessageToUser(msg: String) {
+        println("[INFO] $msg")
+        gameScene.showMessage(msg)
+    }
 
 
     /** Exits the game application */
