@@ -20,8 +20,6 @@ class ConfirmNextPlayerScene(
     private val application: SopraApplication
 ) : MenuScene(width = 1280, height = 720), Refreshable {
 
-    /** Flag to indicate whether this is the first turn of the game. */
-    private var isInitialTurn: Boolean = false
 
     /** Label displaying the title text (e.g. "Spiel beginnt!", "Zug beendet!"). */
     private val dialogTitleLabel = Label(
@@ -77,23 +75,7 @@ class ConfirmNextPlayerScene(
         }
     }
 
-    /**
-     * Updates the dialog content to reflect the name of the next player and
-     * whether it is the first turn or a regular turn.
-     *
-     * @param nextPlayerName Name of the player who will play next.
-     * @param isFirstTurn Flag indicating if this is the first turn of the game.
-     */
-    fun updateContent(nextPlayerName: String, isFirstTurn: Boolean = false) {
-        this.isInitialTurn = isFirstTurn
-        if (isFirstTurn) {
-            dialogTitleLabel.text = "Spiel beginnt!"
-            nextPlayerInfoLabel.text = "$nextPlayerName, du beginnst das Spiel!"
-        } else {
-            dialogTitleLabel.text = "Zug beendet!"
-            nextPlayerInfoLabel.text = "Als nächstes ist $nextPlayerName am Zug!"
-        }
-    }
+
 
     // --- Refreshable overrides (no custom logic needed here) ---
 
@@ -101,7 +83,7 @@ class ConfirmNextPlayerScene(
     override fun refreshAfterStart(players: List<KombiPlayer>) {}
     override fun refreshAfterTurnStart(activePlayer: KombiPlayer) {}
     override fun refreshAfterTurnEnd(finishedPlayer: KombiPlayer) {}
-    override fun refreshAfterGameEnd(winner: KombiPlayer, loser: KombiPlayer) {}
+    override fun refreshAfterGameEnd(winner: KombiPlayer?) {}
     override fun refreshAfterCardDrawn(card: KombiCard) {}
     override fun refreshAfterCardSwapped(handCard: KombiCard, exchangedCard: KombiCard) {}
     override fun refreshAfterCombinationPlayed(player: KombiPlayer, combination: List<KombiCard>) {}

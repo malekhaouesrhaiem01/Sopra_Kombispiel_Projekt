@@ -40,12 +40,11 @@ interface Refreshable {
 
     /**
      * Called after the game ends.
-     * Should display the winner, loser, and final scores.
+     * Should display the winner (or a draw) and final scores.
      *
-     * @param winner The player who won the game
-     * @param loser The player who lost the game
+     * @param winner The player who won the game, or null if it's a draw.
      */
-    fun refreshAfterGameEnd(winner: KombiPlayer, loser: KombiPlayer) {}
+    fun refreshAfterGameEnd(winner: KombiPlayer?) {}
 
     /**
      * Called after the active player draws a card.

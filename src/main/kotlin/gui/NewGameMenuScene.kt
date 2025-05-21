@@ -124,7 +124,7 @@ class NewGameMenuScene(
     override fun refreshAfterStart(players: List<KombiPlayer>) {}
     override fun refreshAfterTurnStart(activePlayer: KombiPlayer) {}
     override fun refreshAfterTurnEnd(finishedPlayer: KombiPlayer) {}
-    override fun refreshAfterGameEnd(winner: KombiPlayer, loser: KombiPlayer) {}
+    override fun refreshAfterGameEnd(winner: KombiPlayer?) {}
     override fun refreshAfterCardDrawn(card: KombiCard) {}
     override fun refreshAfterCardSwapped(handCard: KombiCard, exchangedCard: KombiCard) {}
     override fun refreshAfterCombinationPlayed(player: KombiPlayer, combination: List<KombiCard>) {}

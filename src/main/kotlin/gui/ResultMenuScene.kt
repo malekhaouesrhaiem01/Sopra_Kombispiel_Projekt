@@ -3,143 +3,112 @@ package gui
 import entity.KombiCard
 import entity.KombiPlayer
 import service.Refreshable
+import service.RootService
 import tools.aqua.bgw.components.uicomponents.Button
 import tools.aqua.bgw.components.uicomponents.Label
+import tools.aqua.bgw.core.MenuScene
 import tools.aqua.bgw.util.Font
 import tools.aqua.bgw.visual.ColorVisual
-import tools.aqua.bgw.core.Color
-import tools.aqua.bgw.core.MenuScene
 
 /**
- * Scene displayed at the end of the game to show the result, scores of both players,
- * and offer options to restart or exit the game.
+ * End-of-game result scene displaying the winner or a tie, along with both players' scores.
  *
- * @property application Reference to the main [SopraApplication] to switch scenes or exit.
+ * @property rootService Provides access to the current game state.
+ * @property application Reference to the SopraApplication to trigger scene transitions or exit.
  */
 class ResultMenuScene(
+    private val rootService: RootService,
     private val application: SopraApplication
 ) : MenuScene(width = 1280, height = 720), Refreshable {
 
-    private val titleLabel = Label(
-        width = 300, height = 30,
-        posX = 490, posY = 120,
+    private val winnerTitleLabel = Label(
+        posX = 540, posY = 120,
+        width = 200, height = 30,
         text = "GEWINNER",
-        font = Font(size = 18, color = Color.LIGHT_GRAY, fontWeight = Font.FontWeight.BOLD)
+        font = Font(size = 16)
     )
 
     private val winnerNameLabel = Label(
-        width = 300, height = 60,
-        posX = 490, posY = 170,
+        posX = 490, posY = 160,
+        width = 300, height = 50,
         text = "",
-        font = Font(size = 36, color = Color.WHITE, fontWeight = Font.FontWeight.BOLD),
-        visual = ColorVisual(80, 80, 80)
+        font = Font(size = 28, fontWeight = Font.FontWeight.BOLD),
+        visual = ColorVisual(60, 60, 70)
     )
 
     private val player1ScoreLabel = Label(
-        width = 300, height = 25,
-        posX = 490, posY = 250,
+        posX = 540, posY = 230,
+        width = 200, height = 30,
         text = "",
-        font = Font(size = 16, color = Color.LIGHT_GRAY)
+        font = Font(size = 18)
     )
 
     private val player2ScoreLabel = Label(
-        width = 300, height = 25,
-        posX = 490, posY = 290,
+        posX = 540, posY = 270,
+        width = 200, height = 30,
         text = "",
-        font = Font(size = 16, color = Color.LIGHT_GRAY)
+        font = Font(size = 18)
     )
 
-    private val restartButton = Button(
+    private val newGameButton = Button(
+        posX = 540, posY = 340,
         width = 200, height = 50,
-        posX = 540, posY = 360,
         text = "NEUSTART",
-        font = Font(size = 18, color = Color.WHITE, fontWeight = Font.FontWeight.BOLD),
-        visual = ColorVisual(100, 100, 100)
-    ).apply {
-        onMouseClicked = {
-            application.showNewGameMenuScene()
-        }
-    }
+        font = Font(size = 18, fontWeight = Font.FontWeight.BOLD),
+        visual = ColorVisual(100, 100, 120)
+    )
 
-    private val exitButton = Button(
+    private val quitButton = Button(
+        posX = 540, posY = 410,
         width = 200, height = 50,
-        posX = 540, posY = 430,
         text = "SPIEL BEENDEN",
-        font = Font(size = 18, color = Color.WHITE, fontWeight = Font.FontWeight.BOLD),
-        visual = ColorVisual(120, 80, 80)
-    ).apply {
-        onMouseClicked = {
-            application.exitApp()
-        }
-    }
+        font = Font(size = 18, fontWeight = Font.FontWeight.BOLD),
+        visual = ColorVisual(120, 60, 60)
+    )
 
     init {
-        background = ColorVisual(211, 211, 211) // Light gray
-
+        background = ColorVisual(170, 180, 190)
         addComponents(
-            titleLabel,
+            winnerTitleLabel,
             winnerNameLabel,
             player1ScoreLabel,
             player2ScoreLabel,
-            restartButton,
-            exitButton
+            newGameButton,
+            quitButton
         )
+
+        newGameButton.onMouseClicked = {
+            application.showNewGameMenuScene()
+        }
+
+        quitButton.onMouseClicked = {
+            application.exit()
+        }
     }
 
     /**
-     * Updates the UI to show the winner or tie, and displays player scores.
+     * Updates the result display with winner/tie message and scores.
      *
-     * @param winner The player who won, or null in case of tie.
-     * @param player1 First player.
-     * @param player2 Second player.
-     * @param tieMessage Optional message in case of tie.
+     * @param winner The winning player or null if tie.
      */
-    fun updateContent(winner: KombiPlayer?, player1: KombiPlayer, player2: KombiPlayer, tieMessage: String? = null) {
-        if (tieMessage != null) {
-            titleLabel.text = ""
-            winnerNameLabel.text = tieMessage
-            winnerNameLabel.font = Font(size = 30, color = Color.YELLOW, fontWeight = Font.FontWeight.BOLD)
-            winnerNameLabel.visual = ColorVisual(45, 45, 55)
-        } else if (winner != null) {
-            titleLabel.text = "GEWINNER"
-            winnerNameLabel.text = winner.name.uppercase()
-            winnerNameLabel.font = Font(size = 36, color = Color.WHITE, fontWeight = Font.FontWeight.BOLD)
-            winnerNameLabel.visual = ColorVisual(80, 80, 80)
+    override fun refreshAfterGameEnd(winner: KombiPlayer?) {
+        winnerNameLabel.text = winner?.name?.let { "Gewinner: $it" } ?: "Unentschieden"
+
+        val player1 = rootService.currentGame?.players?.getOrNull(0)
+        val player2 = rootService.currentGame?.players?.getOrNull(1)
+
+        if (player1 != null && player2 != null) {
+            player1ScoreLabel.text = "${player1.name}: ${player1.score} Punkte"
+            player2ScoreLabel.text = "${player2.name}: ${player2.score} Punkte"
         } else {
-            titleLabel.text = "SPIELENDE"
-            winnerNameLabel.text = "Ergebnis unklar"
+            player1ScoreLabel.text = ""
+            player2ScoreLabel.text = ""
         }
 
-        player1ScoreLabel.text = "${player1.name}: ${player1.score}"
-        player2ScoreLabel.text = "${player2.name}: ${player2.score}"
+        application.showResultMenuScene()
     }
 
-    /**
-     * Called when the game ends to determine the winner or tie and update the result view.
-     */
-    override fun refreshAfterGameEnd(winner: KombiPlayer, loser: KombiPlayer) {
-        val actualWinner: KombiPlayer?
-        val tieMsg: String?
-
-        when {
-            winner.score > loser.score -> {
-                actualWinner = winner
-                tieMsg = null
-            }
-            loser.score > winner.score -> {
-                actualWinner = loser
-                tieMsg = null
-            }
-            else -> {
-                actualWinner = null
-                tieMsg = "UNENTSCHIEDEN!"
-            }
-        }
-
-        updateContent(actualWinner, winner, loser, tieMsg)
-    }
-
-    // Unused refresh methods from Refreshable (required by interface)
+    // Unused Refreshable methods
     override fun refreshAfterStart(players: List<KombiPlayer>) {}
     override fun refreshAfterTurnStart(activePlayer: KombiPlayer) {}
     override fun refreshAfterTurnEnd(finishedPlayer: KombiPlayer) {}

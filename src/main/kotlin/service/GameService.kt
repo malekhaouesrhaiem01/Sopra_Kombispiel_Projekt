@@ -81,44 +81,33 @@ class GameService(
 
 
     /**
-     * Ends the game and notifies refreshables of the result.
+     * Ends the current game by determining the winner or tie,
+     * notifying the UI, and cleaning up the game state.
+     *
+     * @throws IllegalStateException if no game is currently active
      */
     fun endGame() {
         val game = rootService.currentGame ?: throw IllegalStateException("No game is currently active.")
         val player1 = game.players[0]
         val player2 = game.players[1]
 
-        val winner: KombiPlayer?
-        val loser: KombiPlayer?
-        val message: String
+        // Determine winner or tie
+        val winner: KombiPlayer? = when {
+            player1.score > player2.score -> player1
+            player2.score > player1.score -> player2
+            else -> null // tie
+        }
 
-        when {
-            player1.score > player2.score -> {
-                winner = player1
-                loser = player2
-                message = "${player1.name} wins!"
-            }
-            player2.score > player1.score -> {
-                winner = player2
-                loser = player1
-                message = "${player2.name} wins!"
-            }
-            else -> {
-                rootService.currentGame = null
-                onAllRefreshables {
-                    refreshAfterGameEnd(player1, player2)
-                    showMessage("It's a tie!")
-                }
-                return
-            }
+        onAllRefreshables {
+            refreshAfterGameEnd(winner)
         }
 
         rootService.currentGame = null
-        onAllRefreshables {
-            refreshAfterGameEnd(winner, loser)
-            showMessage(message)
-        }
     }
+
+
+
+
 
     /**
      * Creates a full 52-card deck, one of each suit and value.

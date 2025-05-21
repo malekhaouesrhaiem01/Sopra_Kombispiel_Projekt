@@ -88,6 +88,9 @@ class PlayerActionService(
         val game = rootService.currentGame ?: throw IllegalStateException("No game active.")
         val player = game.players[game.currentPlayerIndex]
 
+        if (player.performedActions.size >= 2) {
+            throw IllegalStateException("You cannot perform more than 2 actions per turn.")
+        }
         if (Action.PASS in player.performedActions) throw IllegalStateException("Player already passed this turn.")
 
         player.performedActions.add(Action.PASS)

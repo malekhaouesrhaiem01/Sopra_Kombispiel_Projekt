@@ -78,7 +78,7 @@ class TestRefreshable : Refreshable {
         refreshAfterCombinationPlayedCalled = true
     }
 
-    override fun refreshAfterGameEnd(winner: KombiPlayer, loser: KombiPlayer) {
+    override fun refreshAfterGameEnd(winner: KombiPlayer?) {
         refreshAfterGameEndCalled = true
     }
 
