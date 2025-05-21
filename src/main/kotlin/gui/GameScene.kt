@@ -34,6 +34,19 @@ class GameScene(
     private var selectedHandIndex: Int? = null
     private var selectedExchangeIndex: Int? = null
     private val selectedCards = mutableListOf<Int>()
+    private val playerScoreLabel = Label(
+        posX = 100.0, posY = 20.0, width = 300.0, height = 50.0,
+        text = "", font = Font(size = 26, fontWeight = Font.FontWeight.BOLD),
+        alignment = Alignment.CENTER,
+        visual = ColorVisual(240, 255, 240)
+    )
+
+    private val opponentScoreLabel = Label(
+        posX = 1520.0, posY = 20.0, width = 300.0, height = 50.0,
+        text = "", font = Font(size = 26, fontWeight = Font.FontWeight.BOLD),
+        alignment = Alignment.CENTER,
+        visual = ColorVisual(240, 255, 240)
+    )
 
     private val drawPileCountLabel = Label(
         posX = 100.0, posY = 590.0,
@@ -177,8 +190,8 @@ class GameScene(
     init {
         addComponents(
             playerHand, opponentHand, drawPile, playerDiscardPile, opponentDiscardPile, exchangeArea,
-            drawButton, playButton, exchangeButton, passButton, actionLabel, drawPileCountLabel
-        )
+            drawButton, playButton, exchangeButton, passButton, actionLabel, drawPileCountLabel,playerScoreLabel,opponentScoreLabel
+                           )
     }
 
     private fun updateCardRotation(view: CardView, selected: Boolean) {
@@ -271,6 +284,8 @@ class GameScene(
 
         drawPileCountLabel.text = "${game.drawPile.size}\nKarten"
         actionLabel.text = "Actions: ${currentPlayer.performedActions.joinToString()}"
+        playerScoreLabel.text = "${game.players[0].name}: ${game.players[0].score}"
+        opponentScoreLabel.text = "${game.players[1].name}: ${game.players[1].score}"
     }
 
     override fun refreshAfterTurnStart(activePlayer: KombiPlayer) = refreshDisplay()
