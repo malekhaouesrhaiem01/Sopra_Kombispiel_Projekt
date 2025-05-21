@@ -1,5 +1,5 @@
 package gui
-
+import entity.Action
 import entity.KombiCard
 import entity.KombiPlayer
 import service.Refreshable
@@ -145,7 +145,30 @@ class GameScene(
             }
         }
     }
-
+    /**
+     * Button to manually end the player's turn.
+     * When clicked, it forces a turn change and shows the ConfirmNextPlayerScene for the hotseat transition.
+     */
+    private val endTurnButton = Button(
+        posX = 1200, posY = 700, width = 180, height = 50,
+        text = "End Turn",
+        font = Font(size = 18),
+        visual = ColorVisual(176, 196, 222) // Light steel blue
+    ).apply {
+        onMouseClicked = {
+            try {
+                rootService.gameService.endTurn()
+                application.showMenuScene(ConfirmNextPlayerScene(application))
+            } catch (e: Exception) {
+                application.showMessageToUser(e.message ?: "Failed to end turn.")
+            }
+        }
+    }
+    /**
+     * Button that allows the current player to pass their turn.
+     * If the player has already performed one action, passing ends the turn and switches to the next player.
+     * If it's the second action (or if PASS was already played), it calls [endTurn] and shows [ConfirmNextPlayerScene].
+     */
     private val passButton = Button(
         posX = 1200, posY = 580, width = 180, height = 50,
         text = "Pass",
@@ -154,12 +177,26 @@ class GameScene(
     ).apply {
         onMouseClicked = {
             try {
+                // Attempt to register a pass action for the current player
                 rootService.playerActionService.passed()
+
+                val game = rootService.currentGame
+                if(game!=null) {
+                    val currentPlayer = game.players[game.currentPlayerIndex]
+
+                    // If this is the player's second action or if PASS was already done, end the turn
+                    if (currentPlayer.performedActions.size >= 2 || Action.PASS in currentPlayer.performedActions) {
+                        rootService.gameService.endTurn() // 🔄 Switch to the next player
+                        application.showMenuScene(ConfirmNextPlayerScene(application)) //
+                    }
+                }
             } catch (e: Exception) {
-                application.showMessageToUser(e.message ?: "Pass failed.")
+                println("Error during pass: ${e.message}")
             }
         }
     }
+
+
 
     init {
         addComponents(
@@ -172,6 +209,7 @@ class GameScene(
             playButton,
             exchangeButton,
             passButton,
+            endTurnButton,
             actionLabel
         )
     }
@@ -230,6 +268,8 @@ class GameScene(
         }
 
         actionLabel.text = "Actions: ${currentPlayer.performedActions.joinToString()}"
+        endTurnButton.isDisabled = currentPlayer.performedActions.isEmpty()
+
     }
 
     override fun refreshAfterTurnStart(activePlayer: KombiPlayer) = refreshDisplay()
