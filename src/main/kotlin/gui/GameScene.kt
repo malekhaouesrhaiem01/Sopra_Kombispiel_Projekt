@@ -23,6 +23,8 @@ import tools.aqua.bgw.visual.ColorVisual
  * @property cardImageLoader Utility for loading card images
  * @property application Reference to SopraApplication for scene switching and messaging
  */
+// ... (Imports und Klassenkommentar unverändert)
+
 class GameScene(
     private val rootService: RootService,
     private val cardImageLoader: CardImageLoader,
@@ -40,7 +42,8 @@ class GameScene(
         width = 400.0, height = 200.0,
         spacing = 20.0,
         orientation = Orientation.HORIZONTAL,
-        alignment = Alignment.CENTER
+        alignment = Alignment.CENTER,
+        visual = ColorVisual.TRANSPARENT
     )
 
     private val opponentHand = LinearLayout<GameComponentView>(
@@ -48,19 +51,22 @@ class GameScene(
         width = 400.0, height = 200.0,
         spacing = 20.0,
         orientation = Orientation.HORIZONTAL,
-        alignment = Alignment.CENTER
+        alignment = Alignment.CENTER,
+        visual = ColorVisual.TRANSPARENT
     )
 
     private val drawPile = CardStack<CardView>(
         posX = 100.0, posY = 400.0,
         width = 130.0, height = 180.0,
-        alignment = Alignment.CENTER
+        alignment = Alignment.CENTER,
+        visual = ColorVisual(200, 200, 200)
     )
 
     private val discardPile = CardStack<CardView>(
         posX = 300.0, posY = 400.0,
         width = 130.0, height = 180.0,
-        alignment = Alignment.CENTER
+        alignment = Alignment.CENTER,
+        visual = ColorVisual(200, 200, 200)
     )
 
     private val exchangeArea = LinearLayout<CardView>(
@@ -68,8 +74,10 @@ class GameScene(
         width = 400.0, height = 180.0,
         spacing = 20.0,
         orientation = Orientation.HORIZONTAL,
-        alignment = Alignment.CENTER
+        alignment = Alignment.CENTER,
+        visual = ColorVisual.TRANSPARENT
     )
+
 
     private val actionLabel = Label(
         posX = 1200.0, posY = 640.0,
@@ -90,6 +98,7 @@ class GameScene(
         onMouseClicked = {
             try {
                 rootService.playerActionService.drawCard()
+                checkAndEndTurn()
             } catch (e: Exception) {
                 application.showMessageToUser(e.message ?: "Draw failed.")
             }
@@ -115,6 +124,7 @@ class GameScene(
                     try {
                         if (selected.isNotEmpty()) {
                             rootService.playerActionService.playCombinations(listOf(selected))
+                            checkAndEndTurn()
                         }
                     } catch (e: Exception) {
                         application.showMessageToUser(e.message ?: "Play failed.")
@@ -142,28 +152,12 @@ class GameScene(
                 try {
                     if (selectedHandIndex != null && selectedExchangeIndex != null) {
                         rootService.playerActionService.tradeCard(selectedHandIndex!!, selectedExchangeIndex!!)
+                        checkAndEndTurn()
                     }
                 } catch (e: Exception) {
                     application.showMessageToUser(e.message ?: "Exchange failed.")
                 }
                 exchangeMode = false
-            }
-        }
-    }
-
-    private val endTurnButton = Button(
-        posX = 1200.0, posY = 700.0,
-        width = 180.0, height = 50.0,
-        text = "End Turn",
-        font = Font(size = 18),
-        visual = ColorVisual(176, 196, 222)
-    ).apply {
-        onMouseClicked = {
-            try {
-                rootService.gameService.endTurn()
-                application.showMenuScene(ConfirmNextPlayerScene(application))
-            } catch (e: Exception) {
-                application.showMessageToUser(e.message ?: "Failed to end turn.")
             }
         }
     }
@@ -179,12 +173,11 @@ class GameScene(
             try {
                 rootService.playerActionService.passed()
                 val game = rootService.currentGame
-                if (game != null) {
-                    val currentPlayer = game.players[game.currentPlayerIndex]
-                    if (currentPlayer.performedActions.size >= 2 || Action.PASS in currentPlayer.performedActions) {
-                        rootService.gameService.endTurn()
-                        application.showMenuScene(ConfirmNextPlayerScene(application))
-                    }
+                val currentPlayer = game?.players?.get(game.currentPlayerIndex)
+                if (currentPlayer != null &&
+                    (currentPlayer.performedActions.size >= 2 || Action.PASS in currentPlayer.performedActions)) {
+                    rootService.gameService.endTurn()
+                    application.showMenuScene(ConfirmNextPlayerScene(application))
                 }
             } catch (e: Exception) {
                 application.showMessageToUser(e.message ?: "Pass failed.")
@@ -192,19 +185,24 @@ class GameScene(
         }
     }
 
+
     init {
         addComponents(
             playerHand, opponentHand, drawPile, discardPile, exchangeArea,
-            drawButton, playButton, exchangeButton, passButton, endTurnButton, actionLabel
+            drawButton, playButton, exchangeButton, passButton, actionLabel
         )
     }
 
     /**
-     * Enables or disables the endTurnButton based on the number of performed actions.
+     * Checks if the player has performed 2 actions and automatically ends the turn.
      */
-    private fun updateEndTurnButtonState() {
-        val currentPlayer = rootService.currentGame?.players?.get(rootService.currentGame!!.currentPlayerIndex)
-        endTurnButton.isDisabled = currentPlayer?.performedActions?.size != 2
+    private fun checkAndEndTurn() {
+        val game = rootService.currentGame ?: return
+        val currentPlayer = game.players[game.currentPlayerIndex]
+        if (currentPlayer.performedActions.size == 2) {
+            rootService.gameService.endTurn()
+            application.showMenuScene(ConfirmNextPlayerScene(application))
+        }
     }
 
     /**
@@ -234,7 +232,8 @@ class GameScene(
         opponentHand.clear()
         repeat(opponent.hand.size) {
             val view = CardView(
-                width = 80.0, height = 120.0,
+                width = 80.0,
+                height = 120.0,
                 front = cardImageLoader.blankImage,
                 back = cardImageLoader.backImage
             ).apply {
@@ -242,6 +241,7 @@ class GameScene(
             }
             opponentHand.add(view)
         }
+
 
         exchangeArea.clear()
         game.exchangeArea.forEachIndexed { index, card ->
@@ -259,7 +259,6 @@ class GameScene(
         }
 
         actionLabel.text = "Actions: ${currentPlayer.performedActions.joinToString()}"
-        updateEndTurnButtonState()
     }
 
     override fun refreshAfterTurnStart(activePlayer: KombiPlayer) = refreshDisplay()

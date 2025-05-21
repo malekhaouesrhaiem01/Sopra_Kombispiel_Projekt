@@ -66,7 +66,10 @@ class GameService(
         val nextIndex = (pastIndex + 1) % 2
         val nextPlayer = game.players[nextIndex]
 
-        if (Action.PASS in pastPlayer.performedActions && Action.PASS in nextPlayer.performedActions) {
+        if (pastPlayer.performedActions.size == 1 &&
+            nextPlayer.performedActions.size == 1 &&
+            pastPlayer.performedActions[0] == Action.PASS &&
+            nextPlayer.performedActions[0] == Action.PASS) {
             endGame()
             return
         }
