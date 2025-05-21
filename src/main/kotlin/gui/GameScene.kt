@@ -15,16 +15,14 @@ import tools.aqua.bgw.util.Font
 import tools.aqua.bgw.visual.ColorVisual
 
 /**
- * Main scene where the game is played. Supports drawing, exchanging, playing combinations, and passing.
- * Cards are shown face-up for the current player. Exchange area is always visible.
- * Buttons are positioned clearly for user interaction.
+ * Main scene where the game is played. Handles all UI logic such as drawing, playing, exchanging, passing,
+ * visual feedback (rotation on selection), and automatic turn-end triggering.
+ * Updated to support two discard piles, enlarged cards, proper layout usage, and button positioning.
  *
- * @property rootService Access to game logic and services
- * @property cardImageLoader Utility for loading card images
- * @property application Reference to SopraApplication for scene switching and messaging
+ * @property rootService Access to game logic and state.
+ * @property cardImageLoader Provides card visuals.
+ * @property application For scene switching and messaging.
  */
-// ... (Imports und Klassenkommentar unverändert)
-
 class GameScene(
     private val rootService: RootService,
     private val cardImageLoader: CardImageLoader,
@@ -37,62 +35,57 @@ class GameScene(
     private var selectedExchangeIndex: Int? = null
     private val selectedCards = mutableListOf<Int>()
 
-    private val playerHand = LinearLayout<GameComponentView>(
-        posX = 750.0, posY = 700.0,
-        width = 400.0, height = 200.0,
-        spacing = 20.0,
-        orientation = Orientation.HORIZONTAL,
+    private val drawPileCountLabel = Label(
+        posX = 100.0, posY = 590.0,
+        width = 130.0, height = 50.0,
+        text = "",
+        font = Font(size = 22, fontWeight = Font.FontWeight.BOLD),
         alignment = Alignment.CENTER,
-        visual = ColorVisual.TRANSPARENT
+        visual = ColorVisual(220, 250, 220)
+    )
+
+    private val playerHand = LinearLayout<GameComponentView>(
+        posX = 460.0, posY = 850.0, width = 1000.0, height = 200.0,
+        spacing = 25.0, orientation = Orientation.HORIZONTAL,
+        alignment = Alignment.CENTER, visual = ColorVisual.TRANSPARENT
     )
 
     private val opponentHand = LinearLayout<GameComponentView>(
-        posX = 750.0, posY = 80.0,
-        width = 400.0, height = 200.0,
-        spacing = 20.0,
-        orientation = Orientation.HORIZONTAL,
-        alignment = Alignment.CENTER,
-        visual = ColorVisual.TRANSPARENT
+        posX = 460.0, posY = 80.0, width = 1000.0, height = 200.0,
+        spacing = 25.0, orientation = Orientation.HORIZONTAL,
+        alignment = Alignment.CENTER, visual = ColorVisual.TRANSPARENT
     )
 
     private val drawPile = CardStack<CardView>(
-        posX = 100.0, posY = 400.0,
-        width = 130.0, height = 180.0,
-        alignment = Alignment.CENTER,
-        visual = ColorVisual(200, 200, 200)
+        posX = 100.0, posY = 400.0, width = 130.0, height = 180.0,
+        alignment = Alignment.CENTER, visual = ColorVisual(200, 200, 200)
     )
 
-    private val discardPile = CardStack<CardView>(
-        posX = 300.0, posY = 400.0,
-        width = 130.0, height = 180.0,
-        alignment = Alignment.CENTER,
-        visual = ColorVisual(200, 200, 200)
+    private val playerDiscardPile = CardStack<CardView>(
+        posX = 260.0, posY = 850.0, width = 130.0, height = 180.0,
+        alignment = Alignment.CENTER, visual = ColorVisual(200, 200, 200)
+    )
+
+    private val opponentDiscardPile = CardStack<CardView>(
+        posX = 260.0, posY = 80.0, width = 130.0, height = 180.0,
+        alignment = Alignment.CENTER, visual = ColorVisual(200, 200, 200)
     )
 
     private val exchangeArea = LinearLayout<CardView>(
-        posX = 750.0, posY = 400.0,
-        width = 400.0, height = 180.0,
-        spacing = 20.0,
-        orientation = Orientation.HORIZONTAL,
-        alignment = Alignment.CENTER,
-        visual = ColorVisual.TRANSPARENT
+        posX = 460.0, posY = 400.0, width = 1000.0, height = 180.0,
+        spacing = 25.0, orientation = Orientation.HORIZONTAL,
+        alignment = Alignment.CENTER, visual = ColorVisual.TRANSPARENT
     )
 
-
     private val actionLabel = Label(
-        posX = 1200.0, posY = 640.0,
-        width = 600.0, height = 40.0,
-        text = "",
-        font = Font(size = 25),
-        isWrapText = true,
+        posX = 1450.0, posY = 950.0, width = 400.0, height = 50.0,
+        text = "", font = Font(size = 24), isWrapText = true,
         alignment = Alignment.TOP_LEFT
     )
 
     private val drawButton = Button(
-        posX = 1200.0, posY = 400.0,
-        width = 180.0, height = 50.0,
-        text = "Draw Card",
-        font = Font(size = 18),
+        posX = 1450.0, posY = 700.0, width = 200.0, height = 50.0,
+        text = "Draw Card", font = Font(size = 18),
         visual = ColorVisual(173, 216, 230)
     ).apply {
         onMouseClicked = {
@@ -106,16 +99,14 @@ class GameScene(
     }
 
     private val playButton = Button(
-        posX = 1200.0, posY = 460.0,
-        width = 180.0, height = 50.0,
-        text = "Play Combination",
-        font = Font(size = 18),
+        posX = 1450.0, posY = 760.0, width = 200.0, height = 50.0,
+        text = "Play Combination", font = Font(size = 18),
         visual = ColorVisual(144, 238, 144)
     ).apply {
         onMouseClicked = {
             if (!playMode) {
                 playMode = true
-                selectedCards.clear()
+                clearHandSelection()
             } else {
                 val game = rootService.currentGame
                 if (game != null) {
@@ -128,26 +119,24 @@ class GameScene(
                         }
                     } catch (e: Exception) {
                         application.showMessageToUser(e.message ?: "Play failed.")
+                        clearHandSelection()
                     }
                     playMode = false
-                    selectedCards.clear()
                 }
             }
         }
     }
 
     private val exchangeButton = Button(
-        posX = 1200.0, posY = 520.0,
-        width = 180.0, height = 50.0,
-        text = "Exchange Card",
-        font = Font(size = 18),
+        posX = 1450.0, posY = 820.0, width = 200.0, height = 50.0,
+        text = "Exchange Card", font = Font(size = 18),
         visual = ColorVisual(255, 228, 181)
     ).apply {
         onMouseClicked = {
             if (!exchangeMode) {
                 exchangeMode = true
-                selectedHandIndex = null
-                selectedExchangeIndex = null
+                clearHandSelection()
+                clearExchangeSelection()
             } else {
                 try {
                     if (selectedHandIndex != null && selectedExchangeIndex != null) {
@@ -158,15 +147,15 @@ class GameScene(
                     application.showMessageToUser(e.message ?: "Exchange failed.")
                 }
                 exchangeMode = false
+                clearHandSelection()
+                clearExchangeSelection()
             }
         }
     }
 
     private val passButton = Button(
-        posX = 1200.0, posY = 580.0,
-        width = 180.0, height = 50.0,
-        text = "Pass",
-        font = Font(size = 18),
+        posX = 1450.0, posY = 880.0, width = 200.0, height = 50.0,
+        text = "Pass", font = Font(size = 18),
         visual = ColorVisual(255, 160, 122)
     ).apply {
         onMouseClicked = {
@@ -185,17 +174,28 @@ class GameScene(
         }
     }
 
-
     init {
         addComponents(
-            playerHand, opponentHand, drawPile, discardPile, exchangeArea,
-            drawButton, playButton, exchangeButton, passButton, actionLabel
+            playerHand, opponentHand, drawPile, playerDiscardPile, opponentDiscardPile, exchangeArea,
+            drawButton, playButton, exchangeButton, passButton, actionLabel, drawPileCountLabel
         )
     }
 
-    /**
-     * Checks if the player has performed 2 actions and automatically ends the turn.
-     */
+    private fun updateCardRotation(view: CardView, selected: Boolean) {
+        view.rotation = if (selected) 6.0 else 0.0
+    }
+
+    private fun clearHandSelection() {
+        selectedCards.clear()
+        selectedHandIndex = null
+        playerHand.forEach { if (it is CardView) updateCardRotation(it, false) }
+    }
+
+    private fun clearExchangeSelection() {
+        selectedExchangeIndex = null
+        exchangeArea.forEach { if (it is CardView) updateCardRotation(it, false) }
+    }
+
     private fun checkAndEndTurn() {
         val game = rootService.currentGame ?: return
         val currentPlayer = game.players[game.currentPlayerIndex]
@@ -205,9 +205,6 @@ class GameScene(
         }
     }
 
-    /**
-     * Refreshes all card areas including player hands, exchange area, and discard pile.
-     */
     fun refreshDisplay() {
         val game = rootService.currentGame ?: return
         val currentPlayer = game.players[game.currentPlayerIndex]
@@ -216,14 +213,27 @@ class GameScene(
         playerHand.clear()
         currentPlayer.hand.forEachIndexed { index, card ->
             val view = CardView(
-                width = 80.0, height = 120.0,
+                width = 100.0, height = 150.0,
                 front = cardImageLoader.frontImageFor(card.suit, card.value),
                 back = cardImageLoader.backImage
             ).apply {
                 showFront()
                 onMouseClicked = {
-                    if (playMode) selectedCards.add(index)
-                    if (exchangeMode) selectedHandIndex = index
+                    if (playMode) {
+                        if (selectedCards.contains(index)) {
+                            selectedCards.remove(index)
+                            updateCardRotation(this, false)
+                        } else {
+                            selectedCards.add(index)
+                            updateCardRotation(this, true)
+                        }
+                    }
+                    if (exchangeMode) {
+                        selectedHandIndex = index
+                        playerHand.forEachIndexed { i, card ->
+                            if (card is CardView) updateCardRotation(card, i == index)
+                        }
+                    }
                 }
             }
             playerHand.add(view)
@@ -232,32 +242,34 @@ class GameScene(
         opponentHand.clear()
         repeat(opponent.hand.size) {
             val view = CardView(
-                width = 80.0,
-                height = 120.0,
+                width = 100.0, height = 150.0,
                 front = cardImageLoader.blankImage,
                 back = cardImageLoader.backImage
-            ).apply {
-                showBack()
-            }
+            ).apply { showBack() }
             opponentHand.add(view)
         }
-
 
         exchangeArea.clear()
         game.exchangeArea.forEachIndexed { index, card ->
             val view = CardView(
-                width = 80.0, height = 120.0,
+                width = 100.0, height = 150.0,
                 front = cardImageLoader.frontImageFor(card.suit, card.value),
                 back = cardImageLoader.backImage
             ).apply {
                 showFront()
                 onMouseClicked = {
-                    if (exchangeMode) selectedExchangeIndex = index
+                    if (exchangeMode) {
+                        selectedExchangeIndex = index
+                        exchangeArea.forEachIndexed { i, card ->
+                            if (card is CardView) updateCardRotation(card, i == index)
+                        }
+                    }
                 }
             }
             exchangeArea.add(view)
         }
 
+        drawPileCountLabel.text = "${game.drawPile.size}\nKarten"
         actionLabel.text = "Actions: ${currentPlayer.performedActions.joinToString()}"
     }
 
@@ -271,13 +283,17 @@ class GameScene(
     override fun refreshAfterCardSwapped(handCard: KombiCard, exchangedCard: KombiCard) = refreshDisplay()
 
     override fun refreshAfterCombinationPlayed(player: KombiPlayer, combination: List<KombiCard>) {
+        val game = rootService.currentGame ?: return
+        val isCurrentPlayer = player == game.players[game.currentPlayerIndex]
+        val targetPile = if (isCurrentPlayer) playerDiscardPile else opponentDiscardPile
+
         combination.forEach { card ->
             val view = CardView(
-                width = 80.0, height = 120.0,
+                width = 100.0, height = 150.0,
                 front = cardImageLoader.frontImageFor(card.suit, card.value),
                 back = cardImageLoader.backImage
             ).apply { showFront() }
-            discardPile.add(view)
+            targetPile.add(view)
         }
         refreshDisplay()
     }
