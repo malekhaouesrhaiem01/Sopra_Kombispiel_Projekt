@@ -1,4 +1,5 @@
 package gui
+import tools.aqua.bgw.visual.ImageVisual
 
 import entity.KombiCard
 import entity.KombiPlayer
@@ -63,6 +64,8 @@ class ConfirmNextPlayerScene(
 
     init {
         background = ColorVisual(240, 240, 240)
+        this.background = ImageVisual("confirmmenuscene.jpg")
+
 
         addComponents(
             titleLabel,

@@ -61,6 +61,13 @@ class GameService(
     fun endTurn() {
         val game = rootService.currentGame ?: throw IllegalStateException("No game is active.")
 
+        // Check immediately after the turn for game-ending condition
+        val currentPlayer = game.players[game.currentPlayerIndex]
+        if (currentPlayer.hand.isEmpty()) {
+            rootService.gameService.endGame()
+            return
+        }
+
         val currentIndex = game.currentPlayerIndex
         val nextIndex = (currentIndex + 1) % 2
 
@@ -69,6 +76,7 @@ class GameService(
 
         onAllRefreshables { refreshAfterTurnEnd() }
     }
+
 
 
 

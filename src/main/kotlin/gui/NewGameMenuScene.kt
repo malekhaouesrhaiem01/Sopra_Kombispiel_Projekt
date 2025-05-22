@@ -1,4 +1,5 @@
 package gui
+import tools.aqua.bgw.visual.ImageVisual
 
 import entity.KombiCard
 import entity.KombiPlayer
@@ -22,10 +23,10 @@ class NewGameMenuScene(
 
     /** Big headline at the top of the screen. */
     private val headlineLabel = Label(
-        posX = 440, posY = 80,
+        posX = 440, posY = 30,
         width = 400, height = 50,
         text = "Kombi-Duell",
-        font = Font(size = 32, fontWeight = Font.FontWeight.BOLD)
+        font = Font(size = 40, fontWeight = Font.FontWeight.BOLD , color = Color.RED )
     )
 
     /** Subtext asking players to enter their names. */
@@ -33,7 +34,7 @@ class NewGameMenuScene(
         posX = 440, posY = 140,
         width = 400, height = 30,
         text = "Spieler-Namen eingeben",
-        font = Font(size = 18, color = Color(80, 80, 80))
+        font = Font(size = 22, color = Color.GREEN)
     )
 
     /** Label for player 1 input field. */
@@ -41,7 +42,7 @@ class NewGameMenuScene(
         posX = 440, posY = 200,
         width = 150, height = 30,
         text = "Spieler 1:",
-        font = Font(size = 16, fontWeight = Font.FontWeight.BOLD)
+        font = Font(size = 22, fontWeight = Font.FontWeight.BOLD, color = Color.WHITE)
     )
 
     /** Text field where player 1 types their name. */
@@ -57,14 +58,14 @@ class NewGameMenuScene(
         posX = 440, posY = 260,
         width = 150, height = 30,
         text = "Spieler 2:",
-        font = Font(size = 16, fontWeight = Font.FontWeight.BOLD)
+        font = Font(size = 22, fontWeight = Font.FontWeight.BOLD, color = Color.WHITE)
     )
 
     /** Text field where player 2 types their name. */
     val player2NameField = TextField(
         posX = 600, posY = 260,
         width = 300, height = 40,
-        prompt = "Spieler 2",
+        prompt = "Name Spieler 2",
         font = Font(size = 16)
     )
 
@@ -73,7 +74,7 @@ class NewGameMenuScene(
         posX = 465, posY = 320,
         width = 350, height = 30,
         text = "",
-        font = Font(size = 14, color = Color.RED)
+        font = Font(size = 22, color = Color.RED)
     )
 
     /** The "Start Game" button. When clicked, we try to start the game. */
@@ -87,7 +88,7 @@ class NewGameMenuScene(
 
     init {
         background = ColorVisual(235, 235, 235)
-
+        this.background = ImageVisual("newgamemenuscene.jpg")
         addComponents(
             headlineLabel,
             subHeadlineLabel,

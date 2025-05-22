@@ -1,5 +1,5 @@
 package gui
-
+import tools.aqua.bgw.visual.ImageVisual
 import entity.KombiCard
 import entity.KombiPlayer
 import service.Refreshable
@@ -68,6 +68,7 @@ class ResultMenuScene(
 
     init {
         background = ColorVisual(170, 180, 190)
+        this.background = ImageVisual("resultmenuscene.jpg")
         addComponents(
             winnerTitleLabel,
             winnerNameLabel,

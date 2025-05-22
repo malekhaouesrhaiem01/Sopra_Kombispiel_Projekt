@@ -1,5 +1,5 @@
 package gui
-
+import tools.aqua.bgw.visual.ImageVisual
 import entity.Action
 import entity.KombiCard
 import entity.KombiPlayer
@@ -188,6 +188,7 @@ class GameScene(
     }
 
     init {
+        this.background = ImageVisual("gamescene.jpg")
         addComponents(
             playerHand, opponentHand, drawPile, playerDiscardPile, opponentDiscardPile, exchangeArea,
             drawButton, playButton, exchangeButton, passButton, actionLabel, drawPileCountLabel, playerScoreLabel, opponentScoreLabel,
@@ -222,7 +223,8 @@ class GameScene(
         val game = rootService.currentGame ?: return
         val currentPlayer = game.players[game.currentPlayerIndex]
         val opponent = game.players[(game.currentPlayerIndex + 1) % 2]
-
+        playerDiscardPile.clear()
+        opponentDiscardPile.clear()
         playerHand.clear()
         currentPlayer.hand.forEachIndexed { index, card ->
             val view = CardView(
@@ -288,7 +290,7 @@ class GameScene(
         opponentScoreLabel.text = "${game.players[1].name}: ${game.players[1].score}"
     }
 
-    override fun refreshAfterTurnStart(activePlayer: KombiPlayer) = refreshDisplay()
+    override fun refreshAfterTurnStart(activePlayer: KombiPlayer) { refreshDisplay()}
     override fun refreshAfterTurnEnd() {
         refreshDisplay()
        application.showConfirmNextPlayerScene()

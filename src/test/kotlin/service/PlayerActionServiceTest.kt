@@ -180,7 +180,7 @@ class PlayerActionServiceTest {
         val ex = assertThrows<IllegalArgumentException> {
             playerActionService.playCombinations(listOf(badSeq))
         }
-        assertEquals("Not a valid sequence.", ex.message)
+        assertEquals("Invalid combination.", ex.message)
     }
 
     /**
@@ -281,5 +281,44 @@ class PlayerActionServiceTest {
 
         assertEquals("Player already passed this turn.", ex.message)
     }
+    @Test
+    fun testDetermineCombinationType() {
+        val rootService = RootService()
+        val service = PlayerActionService(rootService)
+        val suit = CardSuit.HEARTS
+
+        fun seq(vararg values: CardValue) = values.map { KombiCard(suit, it) }
+
+        fun test(input: List<KombiCard>, expected: String?) {
+            try {
+                val result = service.determineCombinationType(input)
+                if (result == expected) println("PASSED: $input → $result")
+                else println("FAILED: $input → $result, expected $expected")
+            } catch (e: Exception) {
+                if (expected == null) println("PASSED: $input → Exception as expected")
+                else println("FAILED: $input → Exception but expected $expected")
+            }
+        }
+
+        test(seq( CardValue.THREE,CardValue.TWO, CardValue.FOUR), "SEQUENCE")
+        test(seq( CardValue.JACK,CardValue.NINE, CardValue.TEN, CardValue.QUEEN), "SEQUENCE")
+        test(seq( CardValue.THREE,CardValue.ACE, CardValue.TWO), "SEQUENCE")
+        test(seq( CardValue.ACE,CardValue.KING, CardValue.TWO), "SEQUENCE")
+        test(seq( CardValue.ACE, CardValue.TWO,CardValue.KING, CardValue.THREE), "SEQUENCE")
+        test(seq( CardValue.ACE, CardValue.TWO,CardValue.KING, CardValue.THREE, CardValue.FOUR), "SEQUENCE")
+        test(seq(CardValue.KING, CardValue.ACE, CardValue.TWO, CardValue.THREE, CardValue.FOUR, CardValue.FIVE), "SEQUENCE")
+        test(seq(CardValue.QUEEN, CardValue.ACE, CardValue.KING, CardValue.TWO), "SEQUENCE")
+        test(seq( CardValue.KING,CardValue.JACK, CardValue.QUEEN, CardValue.THREE, CardValue.ACE, CardValue.TWO), "SEQUENCE")
+        test(seq(CardValue.TWO, CardValue.THREE, CardValue.FIVE), null)
+        test(seq(CardValue.ACE, CardValue.TWO, CardValue.FOUR), null)
+        test(seq(CardValue.ACE, CardValue.THREE, CardValue.FOUR), null)
+        test(seq(CardValue.TWO, CardValue.TWO, CardValue.TWO), "TRIPLE")
+        test(seq(CardValue.ACE, CardValue.ACE, CardValue.ACE), "TRIPLE")
+        test(seq(CardValue.KING, CardValue.KING, CardValue.KING, CardValue.KING), "QUADRUPLE")
+        test(seq(CardValue.KING, CardValue.KING, CardValue.KING, CardValue.KING, CardValue.KING), null)
+        test(seq(CardValue.TWO, CardValue.TWO), null)
+    }
+
+
 
 }

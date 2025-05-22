@@ -62,7 +62,7 @@ class TestRefreshable : Refreshable {
         refreshAfterTurnStartCalled = true
     }
 
-    override fun refreshAfterTurnEnd(finishedPlayer: KombiPlayer) {
+    override fun refreshAfterTurnEnd() {
         refreshAfterTurnEndCalled = true
     }
 

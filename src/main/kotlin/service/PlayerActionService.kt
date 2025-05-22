@@ -30,6 +30,9 @@ class PlayerActionService(
         player.hand.add(card)
         player.performedActions.add(Action.DRAW_CARD)
         onAllRefreshables { refreshAfterCardDrawn(card) }
+        if (player.performedActions.size == 2) {
+            rootService.gameService.endTurn()
+        }
     }
 
     fun tradeCard(handIndex: Int, exchangeIndex: Int) {
@@ -47,6 +50,9 @@ class PlayerActionService(
         game.exchangeArea[exchangeIndex] = handCard
         player.performedActions.add(Action.EXCHANGE_CARD)
         onAllRefreshables { refreshAfterCardSwapped(handCard, exchangeCard) }
+        if (player.performedActions.size == 2) {
+            rootService.gameService.endTurn()
+        }
     }
 
     fun playCombinations(combos: List<List<KombiCard>>) {
@@ -83,6 +89,9 @@ class PlayerActionService(
         }
 
         onAllRefreshables { refreshAfterCombinationPlayed(player, allCards) }
+        if (player.performedActions.size == 2) {
+            rootService.gameService.endTurn()
+        }
     }
     fun passed() {
         val game = rootService.currentGame ?: throw IllegalStateException("No game active.")
@@ -116,20 +125,46 @@ class PlayerActionService(
         if (player.performedActions.size >= 2 && action !in player.performedActions) throw IllegalStateException("Max two different actions per turn.")
     }
 
-    private fun determineCombinationType(cards: List<KombiCard>): String {
+     fun determineCombinationType(cards: List<KombiCard>): String {
         if (cards.size == 3 && cards.all { it.value == cards[0].value }) return "TRIPLE"
         if (cards.size == 4 && cards.all { it.value == cards[0].value }) return "QUADRUPLE"
 
         if (cards.size >= 3 && cards.all { it.suit == cards[0].suit }) {
-            val sorted = cards.map { it.value.ordinal }.sorted()
+            val ordinals = cards.map { it.value.ordinal }
+            val sorted = ordinals.sorted()
+
+            // Normal straight (2-3-4-5 etc.)
+            var isNormal = true
             for (i in 0 until sorted.size - 1) {
-                val current = sorted[i]
-                val next = sorted[i + 1]
-                if ((current + 1) % 13 != next) throw IllegalArgumentException("Not a valid sequence.")
+                if (sorted[i + 1] != sorted[i] + 1) {
+                    isNormal = false
+                    break
+                }
             }
-            return "SEQUENCE"
+
+            // Wrap-around straight (K-A-2-3-4-5 etc.)
+            val hasAce = ordinals.contains(CardValue.ACE.ordinal)
+            val hasTwo = ordinals.contains(CardValue.TWO.ordinal)
+
+            var isWrap = false
+            if (hasAce && hasTwo) {
+                val max = ordinals.maxOrNull() ?: 12
+                val shifted = ordinals.map { if (it < max - 3) it + 13 else it }.sorted()
+                isWrap = true
+                for (i in 0 until shifted.size - 1) {
+                    if (shifted[i + 1] != shifted[i] + 1) {
+                        isWrap = false
+                        break
+                    }
+                }
+            }
+
+            if (isNormal || isWrap) return "SEQUENCE"
         }
 
         throw IllegalArgumentException("Invalid combination.")
     }
+
+
 }
+
