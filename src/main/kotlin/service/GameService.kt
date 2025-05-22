@@ -61,26 +61,15 @@ class GameService(
     fun endTurn() {
         val game = rootService.currentGame ?: throw IllegalStateException("No game is active.")
 
-        val pastIndex = game.currentPlayerIndex
-        val pastPlayer = game.players[pastIndex]
-        val nextIndex = (pastIndex + 1) % 2
-        val nextPlayer = game.players[nextIndex]
+        val currentIndex = game.currentPlayerIndex
+        val nextIndex = (currentIndex + 1) % 2
 
-        if (pastPlayer.performedActions.size == 1 &&
-            nextPlayer.performedActions.size == 1 &&
-            pastPlayer.performedActions[0] == Action.PASS &&
-            nextPlayer.performedActions[0] == Action.PASS) {
-            endGame()
-            return
-        }
-
-        // First: notify the GUI to refresh with the past player
-        onAllRefreshables { refreshAfterTurnEnd(pastPlayer) }
-
-        // Then switch to next player
         game.currentPlayerIndex = nextIndex
-        nextPlayer.performedActions.clear()
+        game.players[nextIndex].performedActions.clear()
+
+        onAllRefreshables { refreshAfterTurnEnd() }
     }
+
 
 
     /**

@@ -123,7 +123,7 @@ class NewGameMenuScene(
     // These are unused here, but needed to implement Refreshable
     override fun refreshAfterStart(players: List<KombiPlayer>) {}
     override fun refreshAfterTurnStart(activePlayer: KombiPlayer) {}
-    override fun refreshAfterTurnEnd(finishedPlayer: KombiPlayer) {}
+    override fun refreshAfterTurnEnd() {}
     override fun refreshAfterGameEnd(winner: KombiPlayer?) {}
     override fun refreshAfterCardDrawn(card: KombiCard) {}
     override fun refreshAfterCardSwapped(handCard: KombiCard, exchangedCard: KombiCard) {}

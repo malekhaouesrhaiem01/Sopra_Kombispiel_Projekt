@@ -190,8 +190,8 @@ class GameScene(
     init {
         addComponents(
             playerHand, opponentHand, drawPile, playerDiscardPile, opponentDiscardPile, exchangeArea,
-            drawButton, playButton, exchangeButton, passButton, actionLabel, drawPileCountLabel,playerScoreLabel,opponentScoreLabel
-                           )
+            drawButton, playButton, exchangeButton, passButton, actionLabel, drawPileCountLabel, playerScoreLabel, opponentScoreLabel,
+        )
     }
 
     private fun updateCardRotation(view: CardView, selected: Boolean) {
@@ -289,9 +289,9 @@ class GameScene(
     }
 
     override fun refreshAfterTurnStart(activePlayer: KombiPlayer) = refreshDisplay()
-    override fun refreshAfterTurnEnd(finishedPlayer: KombiPlayer) {
+    override fun refreshAfterTurnEnd() {
         refreshDisplay()
-        application.showConfirmNextPlayerScene()
+       application.showConfirmNextPlayerScene()
     }
 
     override fun refreshAfterCardDrawn(card: KombiCard) = refreshDisplay()

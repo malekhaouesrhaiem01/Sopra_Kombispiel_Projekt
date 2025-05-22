@@ -36,7 +36,7 @@ interface Refreshable {
      *
      * @param finishedPlayer The player who just ended their turn
      */
-    fun refreshAfterTurnEnd(finishedPlayer: KombiPlayer) {}
+    fun refreshAfterTurnEnd() {}
 
     /**
      * Called after the game ends.

@@ -111,7 +111,7 @@ class ResultMenuScene(
     // Unused Refreshable methods
     override fun refreshAfterStart(players: List<KombiPlayer>) {}
     override fun refreshAfterTurnStart(activePlayer: KombiPlayer) {}
-    override fun refreshAfterTurnEnd(finishedPlayer: KombiPlayer) {}
+    override fun refreshAfterTurnEnd() {}
     override fun refreshAfterCardDrawn(card: KombiCard) {}
     override fun refreshAfterCardSwapped(handCard: KombiCard, exchangedCard: KombiCard) {}
     override fun refreshAfterCombinationPlayed(player: KombiPlayer, combination: List<KombiCard>) {}

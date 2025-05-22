@@ -94,8 +94,21 @@ class PlayerActionService(
         if (Action.PASS in player.performedActions) throw IllegalStateException("Player already passed this turn.")
 
         player.performedActions.add(Action.PASS)
-        onAllRefreshables { refreshAfterTurnEnd(player) }
+        val otherPlayer = game.players[(game.currentPlayerIndex + 1) % 2]
+
+        if (otherPlayer.performedActions.size == 1 &&
+            player.performedActions.size == 1 &&
+            otherPlayer.performedActions[0] == Action.PASS &&
+            player.performedActions[0] == Action.PASS
+        ) {
+            // Beide haben genau 1x PASS → Spiel beenden
+            rootService.gameService.endGame()
+        } else {
+            // Sonst ganz normal den Zug beenden
+            rootService.gameService.endTurn()
+        }
     }
+
 
     private fun checkActionRules(player: KombiPlayer, action: Action) {
         if (Action.PASS in player.performedActions) throw IllegalStateException("No actions allowed after passing.")
