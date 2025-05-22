@@ -2,6 +2,9 @@ package entity
 
 import kotlin.test.*
 
+/**
+ * Unit tests for [KombiCard].
+ */
 class KombiCardTest {
 
     private val card1 = KombiCard(CardSuit.SPADES, CardValue.ACE)

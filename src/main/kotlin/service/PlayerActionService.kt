@@ -18,6 +18,14 @@ class PlayerActionService(
     private val rootService: RootService
 ) : AbstractRefreshingService() {
 
+    /**
+     * Draws one card from the draw pile and adds it to the player's hand.
+     *
+     * Validates action rules, enforces hand size limits, and ends the turn
+     * if this is the second distinct non-combination action.
+     *
+     * @throws IllegalStateException if no game is active, draw pile is empty, or hand is full.
+     */
     fun drawCard() {
         val game = rootService.currentGame ?: throw IllegalStateException("No game active.")
         val player = game.players[game.currentPlayerIndex]
@@ -30,13 +38,21 @@ class PlayerActionService(
         player.hand.add(card)
         player.performedActions.add(Action.DRAW_CARD)
         onAllRefreshables { refreshAfterCardDrawn(card) }
+
         val distinctNonPlay = player.performedActions.filter { it != Action.PLAY_COMBINATION }.toSet()
         if (distinctNonPlay.size >= 2) {
             rootService.gameService.endTurn()
         }
-
     }
 
+    /**
+     * Trades one card from the player's hand with one from the exchange area.
+     *
+     * @param handIndex Index of the card in the player's hand.
+     * @param exchangeIndex Index of the card in the exchange area.
+     * @throws IllegalStateException if no game is active.
+     * @throws IllegalArgumentException if any index is out of range or action already performed.
+     */
     fun tradeCard(handIndex: Int, exchangeIndex: Int) {
         val game = rootService.currentGame ?: throw IllegalStateException("No game active.")
         val player = game.players[game.currentPlayerIndex]
@@ -52,12 +68,20 @@ class PlayerActionService(
         game.exchangeArea[exchangeIndex] = handCard
         player.performedActions.add(Action.EXCHANGE_CARD)
         onAllRefreshables { refreshAfterCardSwapped(handCard, exchangeCard) }
+
         val distinctNonPlay = player.performedActions.filter { it != Action.PLAY_COMBINATION }.toSet()
         if (distinctNonPlay.size >= 2) {
             rootService.gameService.endTurn()
         }
     }
 
+    /**
+     * Plays a valid card combination from the player's hand and adds it to their discard pile.
+     *
+     * @param selectedCards The cards the player wants to play.
+     * @throws IllegalStateException if no game is active or turn rules are violated.
+     * @throws IllegalArgumentException if the combination is invalid or cards not in hand.
+     */
     fun playCombination(selectedCards: List<KombiCard>) {
         val game = rootService.currentGame ?: throw IllegalStateException("No game active.")
         val player = game.players[game.currentPlayerIndex]
@@ -92,16 +116,19 @@ class PlayerActionService(
         }
     }
 
+    /**
+     * Ends the player's turn by passing. If both players pass in succession, ends the game.
+     *
+     * @throws IllegalStateException if player already passed or no game active.
+     */
     fun passed() {
         val game = rootService.currentGame ?: throw IllegalStateException("No game active.")
         val player = game.players[game.currentPlayerIndex]
 
-        //  Already passed this turn
         if (Action.PASS in player.performedActions) {
             throw IllegalStateException("You already passed this turn.")
         }
 
-        //  Allow PASS as third action(PLAYS THE ROLE OF ENDTURN HERE), and end turn immediately if 2 distinct actions already done
         val distinctNonPlayActions = player.performedActions.filter { it != Action.PLAY_COMBINATION }.toSet()
         if (distinctNonPlayActions.size >= 2) {
             player.performedActions.add(Action.PASS)
@@ -112,23 +139,27 @@ class PlayerActionService(
         player.performedActions.add(Action.PASS)
 
         val otherPlayer = game.players[(game.currentPlayerIndex + 1) % 2]
-
-        if (otherPlayer.performedActions.size == 1 &&
+        if (
+            otherPlayer.performedActions.size == 1 &&
             player.performedActions.size == 1 &&
             otherPlayer.performedActions[0] == Action.PASS &&
             player.performedActions[0] == Action.PASS
         ) {
-            // Beide haben genau 1x PASS → Spiel beenden
             rootService.gameService.endGame()
         } else {
-            // Sonst ganz normal den Zug beenden
             rootService.gameService.endTurn()
         }
     }
 
-
-
-     fun checkActionRules(player: KombiPlayer, action: Action) {
+    /**
+     * Validates whether the given action is allowed based on the player's current turn state.
+     *
+     * @param player The player whose action is being validated.
+     * @param action The action the player wants to perform.
+     * @throws IllegalStateException if 2 distinct actions already performed or PASS already made.
+     * @throws IllegalArgumentException if the action was already performed (except PLAY_COMBINATION).
+     */
+    fun checkActionRules(player: KombiPlayer, action: Action) {
         if (action == Action.PASS) return
 
         if (Action.PASS in player.performedActions) {
@@ -139,11 +170,6 @@ class PlayerActionService(
             throw IllegalArgumentException("Action $action already performed.")
         }
 
-        // Determine how many distinct actions (including PLAY_COMBINATION once)
-        //this is done with intention  to allow the player to play multiple combinations in one turn
-        //playCombination -> exchngeCard -> drawCard is not allowed
-        //but drawcard  -> playCombination -> playcombination  is allowed
-        // can be evaluated threw tests like i done in playeractionservice or simply threw the application when playing :))
         val distinctActions = player.performedActions.toMutableSet()
         if (action != Action.PLAY_COMBINATION || Action.PLAY_COMBINATION !in distinctActions) {
             distinctActions.add(action)
@@ -154,9 +180,13 @@ class PlayerActionService(
         }
     }
 
-
-
-
+    /**
+     * Determines the type of a combination based on the given cards.
+     *
+     * @param cards The cards the player attempts to play.
+     * @return "TRIPLE", "QUADRUPLE", or "SEQUENCE" if valid.
+     * @throws IllegalArgumentException if the combination is invalid.
+     */
     fun determineCombinationType(cards: List<KombiCard>): String {
         if (cards.size == 3 && cards.all { it.value == cards[0].value }) return "TRIPLE"
         if (cards.size == 4 && cards.all { it.value == cards[0].value }) return "QUADRUPLE"
@@ -165,7 +195,6 @@ class PlayerActionService(
             val ordinals = cards.map { it.value.ordinal }
             val sorted = ordinals.sorted()
 
-            // Normal straight (2-3-4-5 etc.)
             var isNormal = true
             for (i in 0 until sorted.size - 1) {
                 if (sorted[i + 1] != sorted[i] + 1) {
@@ -174,7 +203,6 @@ class PlayerActionService(
                 }
             }
 
-            // Wrap-around straight (K-A-2-3-4-5 etc.)
             val hasAce = ordinals.contains(CardValue.ACE.ordinal)
             val hasTwo = ordinals.contains(CardValue.TWO.ordinal)
 
@@ -196,7 +224,4 @@ class PlayerActionService(
 
         throw IllegalArgumentException("Invalid combination.")
     }
-
-
 }
-

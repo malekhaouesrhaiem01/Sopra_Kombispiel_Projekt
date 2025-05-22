@@ -15,7 +15,14 @@ import tools.aqua.bgw.util.Font
 import tools.aqua.bgw.core.Color
 import tools.aqua.bgw.visual.ColorVisual
 import tools.aqua.bgw.visual.ImageVisual
-
+/**
+ * GameScene class representing the main game interface for the Kombi game.
+ * It extends BoardGameScene and implements Refreshable to update the UI based on game state changes.
+ *
+ * @property rootService The service managing the game state and player actions.
+ * @property cardImageLoader The service responsible for loading card images.
+ * @property application The main application instance for scene management.
+ */
 class GameScene(
     private val rootService: RootService,
     private val cardImageLoader: CardImageLoader,
