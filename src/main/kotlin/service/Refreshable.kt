@@ -34,7 +34,6 @@ interface Refreshable {
      * Called after a player's turn ends.
      * Should hide the current player's hand and prepare the UI for the next player.
      *
-     * @param finishedPlayer The player who just ended their turn
      */
     fun refreshAfterTurnEnd() {}
 

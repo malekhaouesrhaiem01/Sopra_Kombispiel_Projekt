@@ -82,7 +82,7 @@ class ResultMenuScene(
         }
 
         quitButton.onMouseClicked = {
-            application.exit()
+            application.exitApp()
         }
     }
 
