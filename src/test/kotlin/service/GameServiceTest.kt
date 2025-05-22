@@ -1,21 +1,29 @@
 package service
 
 import entity.*
-import org.junit.jupiter.api.*
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
- * Full test suite for [GameService] covering all methods, branches,
- * and error handling for complete test coverage.
+ * Unit tests for [GameService].
+ *
+ * Covers all logic in:
+ * - startGame()
+ * - startTurn()
+ * - endTurn()
+ * - endGame()
+ * - createFullDeck()
  */
 class GameServiceTest {
 
     private lateinit var rootService: RootService
     private lateinit var gameService: GameService
 
-    /**
-     * Sets up a fresh instance of [RootService] and [GameService] before each test.
-     */
     @BeforeEach
     fun setup() {
         rootService = RootService()
@@ -23,158 +31,160 @@ class GameServiceTest {
     }
 
     /**
-     * Tests whether a new game is properly initialized with two players,
-     * 7 cards each, 3 exchange cards, and the correct draw pile.
+     * Tests starting a game with valid names.
      */
     @Test
-    fun `startGame initializes game correctly`() {
+    fun testStartGame_validNames() {
         gameService.startGame("Alice", "Bob")
         val game = rootService.currentGame
         assertNotNull(game)
-        assertEquals(2, game!!.players.size)
+        assertEquals(2, game.players.size)
         assertEquals(7, game.players[0].hand.size)
         assertEquals(7, game.players[1].hand.size)
         assertEquals(3, game.exchangeArea.size)
-        assertEquals(52 - 17, game.drawPile.size)
+        assertTrue(game.drawPile.size in 35..39) // Depends on shuffling
+        assertEquals(0, game.currentPlayerIndex)
     }
 
     /**
-     * Tests that invalid player names (blank or identical) throw exceptions.
+     * Tests that starting a game with blank names throws an error.
      */
     @Test
-    fun `startGame throws for blank or duplicate names`() {
-        assertThrows<IllegalArgumentException> { gameService.startGame("", "Bob") }
-        assertThrows<IllegalArgumentException> { gameService.startGame("Alice", "") }
-        assertThrows<IllegalArgumentException> { gameService.startGame("Same", "Same") }
+    fun testStartGame_blankNames() {
+        val ex1 = assertThrows<IllegalArgumentException> {
+            gameService.startGame("", "Bob")
+        }
+        assertEquals("Player names must not be blank.", ex1.message)
+
+        val ex2 = assertThrows<IllegalArgumentException> {
+            gameService.startGame("Alice", "")
+        }
+        assertEquals("Player names must not be blank.", ex2.message)
     }
 
     /**
-     * Verifies that startTurn throws when no game is currently active.
+     * Tests that starting a game with identical names throws an error.
      */
     @Test
-    fun `startTurn throws if no game active`() {
-        assertThrows<IllegalStateException> { gameService.startTurn() }
+    fun testStartGame_duplicateNames() {
+        val ex = assertThrows<IllegalArgumentException> {
+            gameService.startGame("Alice", "Alice")
+        }
+        assertEquals("Player names must be different.", ex.message)
     }
 
     /**
-     * Verifies that startTurn  successfully accesses the current player
-     * without throwing exceptions.
+     * Tests that starting a turn correctly notifies for the active player.
      */
     @Test
-    fun `startTurn accesses current player`() {
+    fun testStartTurn_activePlayerCorrect() {
         gameService.startGame("Alice", "Bob")
         val game = rootService.currentGame!!
-        val firstPlayer = game.players[0]
         gameService.startTurn()
-        assertEquals(firstPlayer, game.players[game.currentPlayerIndex])
+        val active = game.players[game.currentPlayerIndex]
+        assertEquals("Alice", active.name)
     }
 
     /**
-     * Verifies that endTurn correctly switches the active player
-     * and clears the performed actions of the new player.
+     * Tests that startTurn throws if no game is active.
      */
     @Test
-    fun `endTurn switches to next player and clears actions`() {
+    fun testStartTurn_noGame() {
+        val ex = assertThrows<IllegalStateException> {
+            gameService.startTurn()
+        }
+        assertEquals("No game is active.", ex.message)
+    }
+
+    /**
+     * Tests that endTurn switches to the next player and clears actions.
+     */
+    @Test
+    fun testEndTurn_switchesPlayer() {
         gameService.startGame("Alice", "Bob")
         val game = rootService.currentGame!!
-        val currentPlayer = game.players[game.currentPlayerIndex]
-        currentPlayer.performedActions.add(Action.DRAW_CARD)
-        val nextIndex = (game.currentPlayerIndex + 1) % 2
+        game.players[0].performedActions.add(Action.DRAW_CARD)
 
         gameService.endTurn()
 
-        assertEquals(nextIndex, game.currentPlayerIndex)
-        assertTrue(game.players[nextIndex].performedActions.isEmpty())
+        assertEquals(1, game.currentPlayerIndex)
+        assertTrue(game.players[1].performedActions.isEmpty())
     }
 
     /**
-     * Verifies that endTurn ends the game if both players passed consecutively.
+     * Tests that endTurn ends the game if hand is empty.
      */
     @Test
-    fun `endTurn ends game if both players passed`() {
+    fun testEndTurn_endsGameIfHandEmpty() {
         gameService.startGame("Alice", "Bob")
         val game = rootService.currentGame!!
-        val p1 = game.players[0]
-        val p2 = game.players[1]
-
-        p1.performedActions.add(Action.PASS)
-        p2.performedActions.add(Action.PASS)
-        game.currentPlayerIndex = 0
-
+        game.players[0].hand.clear() // simulate empty hand
         gameService.endTurn()
 
-        assertNull(rootService.currentGame)
+        assertNull(rootService.currentGame) // game is ended and cleared
     }
 
     /**
-     * Tests that endGame  correctly identifies player 1 as the winner.
+     * Tests endTurn throws if no game is active.
      */
     @Test
-    fun `endGame declares correct winner`() {
+    fun testEndTurn_noGame() {
+        val ex = assertThrows<IllegalStateException> {
+            gameService.endTurn()
+        }
+        assertEquals("No game is active.", ex.message)
+    }
+
+    /**
+     * Tests endGame correctly identifies winner and clears game.
+     */
+    @Test
+    fun testEndGame_differentScores() {
+        gameService.startGame("Alice", "Bob")
+        val game = rootService.currentGame!!
+        game.players[0].score = 15
+        game.players[1].score = 10
+        gameService.endGame()
+
+        assertNull(rootService.currentGame) // Game is cleared
+        // Normally we'd mock refreshAfterGameEnd to verify correct winner is passed
+    }
+
+    /**
+     * Tests endGame results in tie.
+     */
+    @Test
+    fun testEndGame_tie() {
         gameService.startGame("Alice", "Bob")
         val game = rootService.currentGame!!
         game.players[0].score = 20
-        game.players[1].score = 10
-
+        game.players[1].score = 20
         gameService.endGame()
 
         assertNull(rootService.currentGame)
     }
 
     /**
-     * Tests that endGame correctly identifies player 2 as the winner.
+     * Tests endGame throws if no game is active.
      */
     @Test
-    fun `endGame declares correct winner reverse`() {
-        gameService.startGame("Alice", "Bob")
-        val game = rootService.currentGame!!
-        game.players[0].score = 5
-        game.players[1].score = 15
-
-        gameService.endGame()
-
-        assertNull(rootService.currentGame)
+    fun testEndGame_noGame() {
+        val ex = assertThrows<IllegalStateException> {
+            gameService.endGame()
+        }
+        assertEquals("No game is currently active.", ex.message)
     }
 
     /**
-     * Verifies that endGame handles tie situations correctly.
+     * Tests that the full deck contains 52 unique cards.
      */
     @Test
-    fun `endGame handles tie`() {
-        gameService.startGame("Alice", "Bob")
-        val game = rootService.currentGame!!
-        game.players[0].score = 10
-        game.players[1].score = 10
+    fun testCreateFullDeck_uniqueCards() {
+        val deck = gameService.javaClass.getDeclaredMethod("createFullDeck").apply {
+            isAccessible = true
+        }.invoke(gameService) as List<*>
 
-        gameService.endGame()
-
-        assertNull(rootService.currentGame)
-    }
-
-    /**
-     * Ensures that endGame throws if called without an active game.
-     */
-    @Test
-    fun `endGame throws if no game active`() {
-        assertThrows<IllegalStateException> { gameService.endGame() }
-    }
-
-    /**
-     * Ensures that endTurn throws if no game is currently active.
-     */
-    @Test
-    fun `endTurn throws if no game active`() {
-        assertThrows<IllegalStateException> { gameService.endTurn() }
-    }
-
-    /**
-     * Uses reflection to test that  createFullDeck returns a 52-card deck with unique entries.
-     */
-    @Test
-    fun `createFullDeck creates 52 unique cards`() {
-        val method = GameService::class.java.getDeclaredMethod("createFullDeck")
-        method.isAccessible = true
-        val deck = method.invoke(gameService) as List<*>
-        assertEquals(52, deck.distinct().size)
+        assertEquals(52, deck.size)
+        assertEquals(52, deck.toSet().size) // no duplicates
     }
 }

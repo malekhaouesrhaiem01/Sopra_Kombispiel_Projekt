@@ -1,6 +1,5 @@
 package gui
 import tools.aqua.bgw.visual.ImageVisual
-import entity.KombiCard
 import entity.KombiPlayer
 import service.Refreshable
 import service.RootService
@@ -22,10 +21,10 @@ class ResultMenuScene(
 ) : MenuScene(width = 1280, height = 720), Refreshable {
 
     private val winnerTitleLabel = Label(
-        posX = 540, posY = 120,
+        posX = 540, posY = 60,
         width = 200, height = 30,
         text = "GEWINNER",
-        font = Font(size = 16)
+        font = Font(size = 35)
     )
 
     private val winnerNameLabel = Label(
@@ -40,14 +39,14 @@ class ResultMenuScene(
         posX = 540, posY = 230,
         width = 200, height = 30,
         text = "",
-        font = Font(size = 18)
+        font = Font(size = 23)
     )
 
     private val player2ScoreLabel = Label(
         posX = 540, posY = 270,
         width = 200, height = 30,
         text = "",
-        font = Font(size = 18)
+        font = Font(size = 23)
     )
 
     private val newGameButton = Button(
@@ -108,14 +107,4 @@ class ResultMenuScene(
 
         application.showResultMenuScene()
     }
-
-    // Unused Refreshable methods
-    override fun refreshAfterStart(players: List<KombiPlayer>) {}
-    override fun refreshAfterTurnStart(activePlayer: KombiPlayer) {}
-    override fun refreshAfterTurnEnd() {}
-    override fun refreshAfterCardDrawn(card: KombiCard) {}
-    override fun refreshAfterCardSwapped(handCard: KombiCard, exchangedCard: KombiCard) {}
-    override fun refreshAfterCombinationPlayed(player: KombiPlayer, combination: List<KombiCard>) {}
-    override fun refreshAfterCardSelected(selectedCard: KombiCard) {}
-    override fun showMessage(message: String) {}
 }

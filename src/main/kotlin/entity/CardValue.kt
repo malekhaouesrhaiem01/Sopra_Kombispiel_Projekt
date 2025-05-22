@@ -1,6 +1,6 @@
 package entity
 
-import java.util.*
+//import java.util.*
 
 /**
  * Enum to distinguish between the 13 possible values in a french-suited card game:
@@ -55,10 +55,11 @@ enum class CardValue {
         /**
          * A set of values for a reduced set of 4x8=32 cards (starting with the 7)
          */
-        fun shortDeck(): Set<CardValue> {
-            return EnumSet.of(ACE, SEVEN, EIGHT, NINE, TEN, JACK, QUEEN, KING)
-        }
+     //   fun shortDeck(): Set<CardValue> {
+         //   return EnumSet.of(ACE, SEVEN, EIGHT, NINE, TEN, JACK, QUEEN, KING)
+       // }
 
+        //because it s unused
     }
 
 

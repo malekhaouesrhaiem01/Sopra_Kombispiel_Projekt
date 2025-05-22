@@ -1,8 +1,5 @@
 package gui
 import tools.aqua.bgw.visual.ImageVisual
-
-import entity.KombiCard
-import entity.KombiPlayer
 import service.Refreshable
 import tools.aqua.bgw.components.uicomponents.*
 import tools.aqua.bgw.util.Font
@@ -120,16 +117,6 @@ class NewGameMenuScene(
             }
         }
     }
-
-    // These are unused here, but needed to implement Refreshable
-    override fun refreshAfterStart(players: List<KombiPlayer>) {}
-    override fun refreshAfterTurnStart(activePlayer: KombiPlayer) {}
-    override fun refreshAfterTurnEnd() {}
-    override fun refreshAfterGameEnd(winner: KombiPlayer?) {}
-    override fun refreshAfterCardDrawn(card: KombiCard) {}
-    override fun refreshAfterCardSwapped(handCard: KombiCard, exchangedCard: KombiCard) {}
-    override fun refreshAfterCombinationPlayed(player: KombiPlayer, combination: List<KombiCard>) {}
-    override fun refreshAfterCardSelected(selectedCard: KombiCard) {}
 
     /**
      * If something goes wrong elsewhere ,and we need to show a message,

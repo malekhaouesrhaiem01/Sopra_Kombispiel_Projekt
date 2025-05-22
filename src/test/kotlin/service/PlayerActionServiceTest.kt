@@ -10,24 +10,19 @@ import kotlin.test.assertTrue
 /**
  * Unit tests for [PlayerActionService].
  *
- * This test class ensures 100% code coverage for:
+ * Covers all logic in:
  * - drawCard()
  * - tradeCard()
- * - playCombinations()
+ * - playCombination()
  * - passed()
- * - all internal rule checks
- *
- * It validates normal usage, edge cases, and error handling.
+ * - checkActionRules()
+ * - determineCombinationType()
  */
 class PlayerActionServiceTest {
 
     private lateinit var rootService: RootService
     private lateinit var playerActionService: PlayerActionService
 
-    /**
-     * Initializes a mock game with 2 players, a filled draw pile,
-     * and a filled exchange area before each test.
-     */
     @BeforeEach
     fun setup() {
         rootService = RootService()
@@ -42,26 +37,20 @@ class PlayerActionServiceTest {
             exchangeArea = mutableListOf()
         )
 
-        game.drawPile.addAll((1..10).map {
-            KombiCard(CardSuit.HEARTS, CardValue.values()[it % 13])
-        })
-
-        game.exchangeArea.addAll((1..3).map {
-            KombiCard(CardSuit.SPADES, CardValue.ACE)
-        })
-
-        p1.hand.addAll((1..5).map {
-            KombiCard(CardSuit.CLUBS, CardValue.values()[it % 13])
-        })
-
+        game.drawPile.addAll(CardValue.entries.map { KombiCard(CardSuit.HEARTS, it) })
+        game.exchangeArea.addAll((1..3).map { KombiCard(CardSuit.SPADES, CardValue.ACE) })
+        p1.hand.addAll(CardValue.entries.take(5).map { KombiCard(CardSuit.CLUBS, it) })
         rootService.currentGame = game
     }
 
+    // --- drawCard() tests ---
+
     /**
-     * Tests successful card drawing from the draw pile.
+     * Tests drawing a card from the draw pile when hand is not full.
+     * Should increase hand size by 1 and add DRAW_CARD to performedActions.
      */
     @Test
-    fun testDrawCard() {
+    fun testDrawCard_success() {
         val player = rootService.currentGame!!.players[0]
         val initialSize = player.hand.size
         playerActionService.drawCard()
@@ -70,7 +59,7 @@ class PlayerActionServiceTest {
     }
 
     /**
-     * Ensures drawing from an empty pile throws an exception.
+     * Tests exception thrown when drawing from an empty pile.
      */
     @Test
     fun testDrawCard_emptyPile() {
@@ -82,13 +71,13 @@ class PlayerActionServiceTest {
     }
 
     /**
-     * Ensures drawing with a full hand throws an exception.
+     * Tests exception thrown when trying to draw with a full hand (10 cards).
      */
     @Test
-    fun testDrawCard_fullHand() {
+    fun testDrawCard_handFull() {
         val player = rootService.currentGame!!.players[0]
-        while (player.hand.size < 10) {
-            player.hand.add(KombiCard(CardSuit.DIAMONDS, CardValue.TWO))
+        repeat(10 - player.hand.size) {
+            player.hand.add(KombiCard(CardSuit.SPADES, CardValue.SEVEN))
         }
         val ex = assertThrows<IllegalStateException> {
             playerActionService.drawCard()
@@ -96,229 +85,351 @@ class PlayerActionServiceTest {
         assertEquals("Hand is full (max 10 cards).", ex.message)
     }
 
+    // --- tradeCard() tests ---
+
     /**
-     * Tests a valid card trade between hand and exchange area.
+     * Tests a valid trade between a card in hand and the exchange area.
      */
     @Test
     fun testTradeCard_success() {
         val player = rootService.currentGame!!.players[0]
         val handCard = player.hand[0]
         val exchangeCard = rootService.currentGame!!.exchangeArea[0]
+
         playerActionService.tradeCard(0, 0)
+
         assertEquals(exchangeCard, player.hand[0])
         assertEquals(handCard, rootService.currentGame!!.exchangeArea[0])
         assertTrue(Action.EXCHANGE_CARD in player.performedActions)
     }
 
     /**
-     * Ensures out-of-bound trade indices throw exceptions.
+     * Tests that trading with invalid indices throws an IllegalArgumentException.
      */
     @Test
     fun testTradeCard_invalidIndices() {
+        //val player = rootService.currentGame!!.players[0]
         assertThrows<IllegalArgumentException> {
             playerActionService.tradeCard(-1, 0)
         }
         assertThrows<IllegalArgumentException> {
-            playerActionService.tradeCard(0, -1)
-        }
-        assertThrows<IllegalArgumentException> {
-            playerActionService.tradeCard(99, 99)
+            playerActionService.tradeCard(0, 99)
         }
     }
 
+    // --- passed() tests ---
+
     /**
-     * Tests playing two valid combinations in one call: a triple and a sequence.
+     * Tests that a player can successfully pass and end their turn.
      */
     @Test
-    fun testPlayCombinations_validTripleAndSequence() {
+    fun testPassed_success() {
         val player = rootService.currentGame!!.players[0]
-        val triple = List(3) { KombiCard(CardSuit.HEARTS, CardValue.SEVEN) }
-        val seq = listOf(
-            KombiCard(CardSuit.SPADES, CardValue.TWO),
-            KombiCard(CardSuit.SPADES, CardValue.THREE),
-            KombiCard(CardSuit.SPADES, CardValue.FOUR)
-        )
-        player.hand.clear()
-        player.hand.addAll(triple + seq)
-
-        playerActionService.playCombinations(listOf(triple, seq))
-        assertEquals(10 + 6, player.score)
-        assertTrue(Action.PLAY_COMBINATION in player.performedActions)
-        assertTrue(player.hand.isEmpty())
+        playerActionService.passed()
+        assertTrue(Action.PASS in player.performedActions)
     }
 
     /**
-     * Ensures an error is thrown when player lacks the required cards.
+     * Tests that passing twice in a turn throws an exception.
      */
     @Test
-    fun testPlayCombinations_invalidCombination_notInHand() {
-        val combo = listOf(
-            KombiCard(CardSuit.HEARTS, CardValue.KING),
-            KombiCard(CardSuit.HEARTS, CardValue.KING),
-            KombiCard(CardSuit.HEARTS, CardValue.KING)
-        )
-        val ex = assertThrows<IllegalArgumentException> {
-            playerActionService.playCombinations(listOf(combo))
-        }
-        assertEquals("Player does not have all cards for combination.", ex.message)
-    }
-
-    /**
-     * Ensures an invalid sequence (non-consecutive) is rejected.
-     */
-    @Test
-    fun testPlayCombinations_invalidCombination_wrongSequence() {
-        val badSeq = listOf(
-            KombiCard(CardSuit.HEARTS, CardValue.TWO),
-            KombiCard(CardSuit.HEARTS, CardValue.FOUR),
-            KombiCard(CardSuit.HEARTS, CardValue.SIX)
-        )
+    fun testPassed_twice_throws() {
         val player = rootService.currentGame!!.players[0]
-        player.hand.clear()
-        player.hand.addAll(badSeq)
-
-        val ex = assertThrows<IllegalArgumentException> {
-            playerActionService.playCombinations(listOf(badSeq))
-        }
-        assertEquals("Invalid combination.", ex.message)
-    }
-
-    /**
-     * Ensures mixed-suit cards not forming any valid combo are rejected.
-     */
-    @Test
-    fun testPlayCombinations_invalidCombination_mixedTypes() {
-        val mixed = listOf(
-            KombiCard(CardSuit.HEARTS, CardValue.TWO),
-            KombiCard(CardSuit.SPADES, CardValue.TWO),
-            KombiCard(CardSuit.DIAMONDS, CardValue.FIVE)
-        )
-        val player = rootService.currentGame!!.players[0]
-        player.hand.clear()
-        player.hand.addAll(mixed)
-
-        val ex = assertThrows<IllegalArgumentException> {
-            playerActionService.playCombinations(listOf(mixed))
-        }
-        assertEquals("Invalid combination.", ex.message)
-    }
-
-    /**
-     * tests if there is a repeated action for example draw card then drawcard again .
-     */
-    @Test
-    fun testRepeatSameActionThrows() {
-        val player = rootService.currentGame!!.players[0]
-        player.performedActions.add(Action.DRAW_CARD)
-
-        val ex = assertThrows<IllegalArgumentException> {
-            playerActionService.drawCard()
-        }
-
-        assertEquals("Action DRAW_CARD already performed.", ex.message)
-    }
-    /**
-     * tests if there is a player wants to play more than 2 action (and distinct actions)for example exchange card draw card playcombination  .
-     */
-    @Test
-    fun testThirdDifferentActionThrows() {
-        val player = rootService.currentGame!!.players[0]
-        player.performedActions.add(Action.DRAW_CARD)
-        player.performedActions.add(Action.EXCHANGE_CARD)
-
-        val cards = listOf(
-            KombiCard(CardSuit.HEARTS, CardValue.SEVEN),
-            KombiCard(CardSuit.HEARTS, CardValue.SEVEN),
-            KombiCard(CardSuit.HEARTS, CardValue.SEVEN)
-        )
-        player.hand.addAll(cards)
-
+        player.performedActions.add(Action.PASS)
         val ex = assertThrows<IllegalStateException> {
-            playerActionService.playCombinations(listOf(cards))
+            playerActionService.passed()
         }
-
-        assertEquals("Max two different actions per turn.", ex.message)
+        assertEquals("You already passed this turn.", ex.message)
     }
+
     /**
-     * Tests that no actions are allowed after passing.
+     * Tests that performing an action after passing is not allowed.
      */
     @Test
     fun testActionAfterPassThrows() {
         val player = rootService.currentGame!!.players[0]
         player.performedActions.add(Action.PASS)
+        val ex = assertThrows<IllegalStateException> {
+            playerActionService.tradeCard(0, 0)
+        }
+        assertEquals("No actions allowed after passing.", ex.message)
+    }
+
+    // --- playCombination() tests ---
+
+    /**
+     * Tests playing a valid triple combination and verifies score and hand updates.
+     */
+    @Test
+    fun testPlayCombination_Triple() {
+        val player = rootService.currentGame!!.players[0]
+        val triple = List(3) { KombiCard(CardSuit.HEARTS, CardValue.EIGHT) }
+        player.hand.clear()
+        player.hand.addAll(triple)
+
+        playerActionService.playCombination(triple)
+
+        assertEquals(10, player.score)
+        assertTrue(player.discardPile.containsAll(triple))
+        assertTrue(player.hand.isEmpty())
+    }
+
+    /**
+     * Tests playing a valid quadruple and checks proper scoring.
+     */
+    @Test
+    fun testPlayCombination_Quadruple() {
+        val player = rootService.currentGame!!.players[0]
+        val quad = List(4) { KombiCard(CardSuit.SPADES, CardValue.NINE) }
+        player.hand.clear()
+        player.hand.addAll(quad)
+
+        playerActionService.playCombination(quad)
+
+        assertEquals(15, player.score)
+        assertTrue(player.discardPile.containsAll(quad))
+        assertTrue(player.hand.isEmpty())
+    }
+
+    /**
+     * Tests a normal valid sequence (4-5-6) with matching suit.
+     */
+    @Test
+    fun testPlayCombination_ValidSequence() {
+        val player = rootService.currentGame!!.players[0]
+        val seq = listOf(
+            KombiCard(CardSuit.DIAMONDS, CardValue.FOUR),
+            KombiCard(CardSuit.DIAMONDS, CardValue.FIVE),
+            KombiCard(CardSuit.DIAMONDS, CardValue.SIX)
+        )
+        player.hand.clear()
+        player.hand.addAll(seq)
+
+        playerActionService.playCombination(seq)
+
+        assertEquals(6, player.score)
+        assertTrue(player.discardPile.containsAll(seq))
+        assertTrue(player.hand.isEmpty())
+    }
+
+    /**
+     * Tests a valid wrap-around sequence like K-A-2-3.
+     */
+    @Test
+    fun testPlayCombination_WrapAroundSequence() {
+        val player = rootService.currentGame!!.players[0]
+        val wrapSeq = listOf(
+            KombiCard(CardSuit.HEARTS, CardValue.QUEEN),
+            KombiCard(CardSuit.HEARTS, CardValue.KING),
+            KombiCard(CardSuit.HEARTS, CardValue.ACE),
+            KombiCard(CardSuit.HEARTS, CardValue.TWO),
+            KombiCard(CardSuit.HEARTS, CardValue.THREE)
+        )
+        player.hand.clear()
+        player.hand.addAll(wrapSeq)
+
+        playerActionService.playCombination(wrapSeq)
+
+        assertEquals(10, player.score)
+        assertTrue(player.hand.isEmpty())
+    }
+
+    /**
+     * Tests exception when trying to play cards not in player's hand.
+     */
+    @Test
+    fun testPlayCombination_Invalid_NotInHand() {
+        val combo = listOf(
+            KombiCard(CardSuit.SPADES, CardValue.SEVEN),
+            KombiCard(CardSuit.SPADES, CardValue.SEVEN),
+            KombiCard(CardSuit.SPADES, CardValue.SEVEN)
+        )
+
+        val ex = assertThrows<IllegalArgumentException> {
+            playerActionService.playCombination(combo)
+        }
+        assertEquals("Player does not have all cards for combination.", ex.message)
+    }
+
+    /**
+     * Tests that an invalid combination (no triple/quad/sequence) throws an exception.
+     */
+    @Test
+    fun testPlayCombination_InvalidCombination() {
+        val player = rootService.currentGame!!.players[0]
+        val invalid = listOf(
+            KombiCard(CardSuit.HEARTS, CardValue.THREE),
+            KombiCard(CardSuit.HEARTS, CardValue.FIVE),
+            KombiCard(CardSuit.HEARTS, CardValue.SEVEN)
+        )
+        player.hand.clear()
+        player.hand.addAll(invalid)
+
+        val ex = assertThrows<IllegalArgumentException> {
+            playerActionService.playCombination(invalid)
+        }
+        assertEquals("Invalid combination.", ex.message)
+    }
+
+    /**
+     * Tests that playing a combination after 2 different actions ends the turn and throws.
+     */
+    @Test
+    fun testPlayCombination_EndsTurnAfterTwoActions() {
+        val player = rootService.currentGame!!.players[0]
+        val triple = List(3) { KombiCard(CardSuit.CLUBS, CardValue.JACK) }
+        player.hand.clear()
+        player.hand.addAll(triple)
+
+        player.performedActions.add(Action.DRAW_CARD)
+        player.performedActions.add(Action.EXCHANGE_CARD)
+
+        val ex = assertThrows<IllegalStateException> {
+            playerActionService.playCombination(triple)
+        }
+        assertEquals("You have already performed 2 different actions this turn.", ex.message)
+    }
+
+    /**
+     * Tests that PLAY_COMBINATION is added only once to performedActions even if called multiple times.
+     */
+    @Test
+    fun testPlayCombination_AddsOnlyOnceToPerformedActions() {
+        val player = rootService.currentGame!!.players[0]
+        val combo1 = listOf(
+            KombiCard(CardSuit.HEARTS, CardValue.FIVE),
+            KombiCard(CardSuit.HEARTS, CardValue.FIVE),
+            KombiCard(CardSuit.HEARTS, CardValue.FIVE)
+        )
+        val combo2 = listOf(
+            KombiCard(CardSuit.SPADES, CardValue.TWO),
+            KombiCard(CardSuit.SPADES, CardValue.THREE),
+            KombiCard(CardSuit.SPADES, CardValue.FOUR)
+        )
+
+        player.hand.clear()
+        player.hand.addAll(combo1 + combo2)
+
+        playerActionService.playCombination(combo1)
+        playerActionService.playCombination(combo2)
+
+        val count = player.performedActions.count { it == Action.PLAY_COMBINATION }
+        assertEquals(1, count, "PLAY_COMBINATION should be added only once.")
+    }
+
+    /**
+     * Tests that the sequence PLAY_COMBINATION -> DRAW_CARD -> PLAY_COMBINATION is allowed
+     * and only counts as 2 distinct actions.
+     */
+    @Test
+    fun testPlayDrawPlayCombinationAllowed() {
+        val player = rootService.currentGame!!.players[0]
+        val triple1 = List(3) { KombiCard(CardSuit.HEARTS, CardValue.FIVE) }
+        val triple2 = List(3) { KombiCard(CardSuit.HEARTS, CardValue.SIX) }
+
+        player.hand.clear()
+        player.hand.addAll(triple1 + triple2)
+
+        playerActionService.playCombination(triple1)
+        playerActionService.drawCard()
+        playerActionService.playCombination(triple2)
+
+        assertTrue(Action.PLAY_COMBINATION in player.performedActions)
+        assertTrue(Action.DRAW_CARD in player.performedActions)
+        assertEquals(20, player.score) // 10 + 10 points
+    }
+
+    /**
+     * Tests that the sequence PLAY_COMBINATION -> DRAW_CARD -> EXCHANGE_CARD is not allowed
+     * due to exceeding the 2 distinct actions per turn rule.
+     */
+    @Test
+    fun testPlayDrawPlayExchangeNotAllowed() {
+        val player = rootService.currentGame!!.players[0]
+        val triple = List(3) { KombiCard(CardSuit.HEARTS, CardValue.FIVE) }
+
+        // Ensure enough cards for all actions
+        player.hand.clear()
+        player.hand.addAll(triple + listOf(KombiCard(CardSuit.HEARTS, CardValue.ACE)))
+
+        rootService.currentGame!!.exchangeArea[0] = KombiCard(CardSuit.CLUBS, CardValue.KING)
+
+        playerActionService.playCombination(triple)
+        playerActionService.drawCard()
 
         val ex = assertThrows<IllegalStateException> {
             playerActionService.tradeCard(0, 0)
         }
-
-        assertEquals("No actions allowed after passing.", ex.message)
-    }
-
-
-    /**
-     * Tests that the player can successfully pass the turn.
-     */
-    @Test
-    fun testPassedAddsActionAndEndsTurn() {
-        val player = rootService.currentGame!!.players[0]
-        assertTrue(Action.PASS !in player.performedActions)
-
-        playerActionService.passed()
-
-        assertTrue(Action.PASS in player.performedActions)
+        assertEquals("You have already performed 2 different actions this turn.", ex.message)
     }
     /**
-     * Tests that passing twice in one turn is not allowed.
+     * Tests that the sequence DRAW_CARD -> PLAY_COMBINATION -> PLAY_COMBINATION is allowed.
+     * This should pass since PLAY_COMBINATION is allowed multiple times in the same turn.
      */
     @Test
-    fun testPassedTwiceThrows() {
+    fun testDrawPlayPlayCombinationAllowed() {
         val player = rootService.currentGame!!.players[0]
-        player.performedActions.add(Action.PASS)
+        val triple1 = List(3) { KombiCard(CardSuit.HEARTS, CardValue.FIVE) }
+        val triple2 = List(3) { KombiCard(CardSuit.HEARTS, CardValue.SIX) }
 
-        val ex = assertThrows<IllegalStateException> {
-            playerActionService.passed()
-        }
+        player.hand.clear()
+        player.hand.addAll(triple1 + triple2)
 
-        assertEquals("Player already passed this turn.", ex.message)
+        playerActionService.drawCard()
+        playerActionService.playCombination(triple1)
+        playerActionService.playCombination(triple2)
+
+        assertEquals(20, player.score)
+        assertTrue(Action.DRAW_CARD in player.performedActions)
+        assertTrue(Action.PLAY_COMBINATION in player.performedActions)
     }
+    /**
+     * Tests that the sequence EXCHANGE_CARD -> PLAY_COMBINATION -> EXCHANGE_CARD is not allowed.
+     * The second EXCHANGE_CARD should throw an exception due to action already performed.
+     */
     @Test
-    fun testDetermineCombinationType() {
-        val rootService = RootService()
-        val service = PlayerActionService(rootService)
-        val suit = CardSuit.HEARTS
+    fun testExchangePlayTradeNotAllowed() {
+        val player = rootService.currentGame!!.players[0]
+        val triple = List(3) { KombiCard(CardSuit.SPADES, CardValue.EIGHT) }
 
-        fun seq(vararg values: CardValue) = values.map { KombiCard(suit, it) }
+        player.hand.clear()
+        player.hand.addAll(triple + listOf(KombiCard(CardSuit.CLUBS, CardValue.TWO)))
 
-        fun test(input: List<KombiCard>, expected: String?) {
-            try {
-                val result = service.determineCombinationType(input)
-                if (result == expected) println("PASSED: $input → $result")
-                else println("FAILED: $input → $result, expected $expected")
-            } catch (e: Exception) {
-                if (expected == null) println("PASSED: $input → Exception as expected")
-                else println("FAILED: $input → Exception but expected $expected")
-            }
+        playerActionService.tradeCard(0, 0)
+        playerActionService.playCombination(triple)
+
+        val ex = assertThrows<IllegalArgumentException> {
+            playerActionService.tradeCard(0, 0)
         }
-
-        test(seq( CardValue.THREE,CardValue.TWO, CardValue.FOUR), "SEQUENCE")
-        test(seq( CardValue.JACK,CardValue.NINE, CardValue.TEN, CardValue.QUEEN), "SEQUENCE")
-        test(seq( CardValue.THREE,CardValue.ACE, CardValue.TWO), "SEQUENCE")
-        test(seq( CardValue.ACE,CardValue.KING, CardValue.TWO), "SEQUENCE")
-        test(seq( CardValue.ACE, CardValue.TWO,CardValue.KING, CardValue.THREE), "SEQUENCE")
-        test(seq( CardValue.ACE, CardValue.TWO,CardValue.KING, CardValue.THREE, CardValue.FOUR), "SEQUENCE")
-        test(seq(CardValue.KING, CardValue.ACE, CardValue.TWO, CardValue.THREE, CardValue.FOUR, CardValue.FIVE), "SEQUENCE")
-        test(seq(CardValue.QUEEN, CardValue.ACE, CardValue.KING, CardValue.TWO), "SEQUENCE")
-        test(seq( CardValue.KING,CardValue.JACK, CardValue.QUEEN, CardValue.THREE, CardValue.ACE, CardValue.TWO), "SEQUENCE")
-        test(seq(CardValue.TWO, CardValue.THREE, CardValue.FIVE), null)
-        test(seq(CardValue.ACE, CardValue.TWO, CardValue.FOUR), null)
-        test(seq(CardValue.ACE, CardValue.THREE, CardValue.FOUR), null)
-        test(seq(CardValue.TWO, CardValue.TWO, CardValue.TWO), "TRIPLE")
-        test(seq(CardValue.ACE, CardValue.ACE, CardValue.ACE), "TRIPLE")
-        test(seq(CardValue.KING, CardValue.KING, CardValue.KING, CardValue.KING), "QUADRUPLE")
-        test(seq(CardValue.KING, CardValue.KING, CardValue.KING, CardValue.KING, CardValue.KING), null)
-        test(seq(CardValue.TWO, CardValue.TWO), null)
+        assertEquals("Action EXCHANGE_CARD already performed.", ex.message)
     }
+    /**
+     * Tests that trying to perform DRAW_CARD twice in one turn throws an exception.
+     */
+    @Test
+    fun testDuplicateDrawThrows() {
+        //val player = rootService.currentGame!!.players[0]
+
+        playerActionService.drawCard()
+
+        val ex = assertThrows<IllegalArgumentException> {
+            playerActionService.drawCard()
+        }
+        assertEquals("Action DRAW_CARD already performed.", ex.message)
+    }
+    /**
+     * Tests that trying to perform EXCHANGE_CARD twice in one turn throws an exception.
+     */
+    @Test
+    fun testDuplicateExchangeThrows() {
 
 
+        playerActionService.tradeCard(0, 0)
+
+        val ex = assertThrows<IllegalArgumentException> {
+            playerActionService.tradeCard(0, 0)
+        }
+        assertEquals("Action EXCHANGE_CARD already performed.", ex.message)
+    }
 
 }

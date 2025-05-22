@@ -1,8 +1,5 @@
 package gui
 import tools.aqua.bgw.visual.ImageVisual
-
-import entity.KombiCard
-import entity.KombiPlayer
 import service.Refreshable
 import tools.aqua.bgw.components.uicomponents.Button
 import tools.aqua.bgw.components.uicomponents.Label
@@ -85,30 +82,33 @@ class ConfirmNextPlayerScene(
         }
     }
 
-    /**
-     * Called when a turn ends. Updates next player and both scores.
-     */
     override fun refreshAfterTurnEnd() {
-
         val game = application.rootService.currentGame ?: return
         val index1 = game.currentPlayerIndex
         val nextPlayer = game.players[index1]
         val p1 = game.players[0]
         val p2 = game.players[1]
 
-        titleLabel.text = "Nächster Spieler ist: ${nextPlayer.name}"
-        player1ScoreLabel.text = "${p1.name}: ${p1.score} Punkte"
-        player2ScoreLabel.text = "${p2.name}: ${p2.score} Punkte"
+        val boldFont = Font(size = 22, fontWeight = Font.FontWeight.BOLD)
+        val whiteVisual = ColorVisual(255, 255, 255, 0) // texte blanc, fond transparent
+
+        titleLabel.apply {
+            text = "Nächster Spieler ist: ${nextPlayer.name}"
+            font = boldFont
+            visual = whiteVisual
+        }
+
+        player1ScoreLabel.apply {
+            text = "${p1.name}: ${p1.score} Punkte"
+            font = boldFont
+            visual = whiteVisual
+        }
+
+        player2ScoreLabel.apply {
+            text = "${p2.name}: ${p2.score} Punkte"
+            font = boldFont
+            visual = whiteVisual
+        }
     }
 
-
-    // All other refresh methods are unused in this scene
-    override fun refreshAfterStart(players: List<KombiPlayer>) {}
-    override fun refreshAfterTurnStart(activePlayer: KombiPlayer) {}
-    override fun refreshAfterGameEnd(winner: KombiPlayer?) {}
-    override fun refreshAfterCardDrawn(card: KombiCard) {}
-    override fun refreshAfterCardSwapped(handCard: KombiCard, exchangedCard: KombiCard) {}
-    override fun refreshAfterCombinationPlayed(player: KombiPlayer, combination: List<KombiCard>) {}
-    override fun refreshAfterCardSelected(selectedCard: KombiCard) {}
-    override fun showMessage(message: String) {}
 }

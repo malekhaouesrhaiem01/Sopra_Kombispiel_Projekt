@@ -16,7 +16,7 @@ class ActionTest {
     @Test
     fun testEnumValuesExistAndAreOrdered() {
         val expected = listOf("DRAW_CARD", "EXCHANGE_CARD", "PLAY_COMBINATION", "PASS")
-        val actual = Action.values().map { it.name }
+        val actual = Action.entries.map { it.name }
         assertEquals(expected, actual)
     }
 
@@ -25,7 +25,7 @@ class ActionTest {
      */
     @Test
     fun testValueOfEachAction() {
-        for (action in Action.values()) {
+        for (action in Action.entries) {
             val byName = Action.valueOf(action.name)
             assertEquals(action, byName)
         }
@@ -36,7 +36,7 @@ class ActionTest {
      */
     @Test
     fun testEnumUniquenessAndValidity() {
-        val all = Action.values().toList()
+        val all = Action.entries.toList()
         val distinct = all.distinct()
         assertEquals(all.size, distinct.size)
         all.forEach { assertTrue(it.name.isNotBlank()) }
