@@ -187,4 +187,39 @@ class GameServiceTest {
         assertEquals(52, deck.size)
         assertEquals(52, deck.toSet().size) // no duplicates
     }
+    /**
+     * Tests that the correct initial player is set after game start.
+     */
+    @Test
+    fun testStartGame_setsFirstPlayerIndex() {
+        gameService.startGame("Alice", "Bob")
+        val game = rootService.currentGame!!
+        assertEquals(0, game.currentPlayerIndex, "First player should start at index 0.")
+    }
+
+    /**
+     * Tests that both players are created with empty performed actions and discard piles.
+     */
+    @Test
+    fun testStartGame_playersInitializedCleanly() {
+        gameService.startGame("Alice", "Bob")
+        val game = rootService.currentGame!!
+        game.players.forEach {
+            assertTrue(it.performedActions.isEmpty(), "Players should start with no actions.")
+            assertTrue(it.discardPile.isEmpty(), "Players should start with empty discard piles.")
+        }
+    }
+
+    /**
+     * Tests that endTurn does not accidentally skip a player or wrap incorrectly.
+     */
+    @Test
+    fun testEndTurn_wrapsCorrectlyToFirstPlayer() {
+        gameService.startGame("Alice", "Bob")
+        val game = rootService.currentGame!!
+        game.currentPlayerIndex = 1
+        gameService.endTurn()
+        assertEquals(0, game.currentPlayerIndex, "Should wrap back to player index 0.")
+    }
+
 }

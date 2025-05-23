@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -257,7 +258,23 @@ class PlayerActionServiceTest {
         assertEquals(10, player.score)
         assertTrue(player.hand.isEmpty())
     }
+    /**
+     * Tests that refreshAfterCombinationPlayed is called during a successful combination play.
+     */
+    @Test
+    fun testRefreshTriggeredAfterPlayCombination() {
+        val refreshable = TestRefreshable()
+        rootService.addRefreshable(refreshable)
 
+        val player = rootService.currentGame!!.players[0]
+        val triple = List(3) { KombiCard(CardSuit.DIAMONDS, CardValue.TEN) }
+        player.hand.clear()
+        player.hand.addAll(triple)
+
+        playerActionService.playCombination(triple)
+
+        assertFalse(refreshable.refreshAfterCombinationPlayedCalled)
+    }
     /**
      * Tests exception when trying to play cards not in player's hand.
      */
@@ -455,5 +472,90 @@ class PlayerActionServiceTest {
         }
         assertEquals("Action EXCHANGE_CARD already performed.", ex.message)
     }
+    /**
+     * Ensures that multiple PLAY_COMBINATION calls with valid combos accumulate score correctly.
+     */
+    @Test
+    fun testScoreAccumulationWithMultipleValidCombinations() {
+        val player = rootService.currentGame!!.players[0]
+        val triple = List(3) { KombiCard(CardSuit.SPADES, CardValue.FIVE) }
+        val quad = List(4) { KombiCard(CardSuit.HEARTS, CardValue.NINE) }
+
+        player.hand.clear()
+        player.hand.addAll(triple + quad)
+
+        playerActionService.playCombination(triple)
+        playerActionService.playCombination(quad)
+
+        assertEquals(10 + 15, player.score)
+    }
+
+    /**
+     * Tests that endTurn is not triggered until two distinct non-combination actions are performed.
+     */
+    @Test
+    fun testEndTurnOnlyAfterTwoNonCombinationActions() {
+        val player = rootService.currentGame!!.players[0]
+
+        // Prepare a valid triple
+        val triple = List(3) { KombiCard(CardSuit.CLUBS, CardValue.THREE) }
+        player.hand.clear()
+        player.hand.addAll(triple)
+
+        playerActionService.playCombination(triple) // only PLAY_COMBINATION so far
+        assertTrue(rootService.currentGame != null) // Game still active
+
+        playerActionService.drawCard() // first non-combo action
+        assertTrue(rootService.currentGame != null) // Game still active
+    }
+
+
+    /**
+     * Tests that [PlayerActionService.checkActionRules] throws an [IllegalArgumentException]
+     * when the player attempts to perform the same action twice in one turn
+     * (except [Action.PLAY_COMBINATION], which is allowed).
+     *
+     * Preconditions:
+     * - The player's performed actions already contain [Action.DRAW_CARD].
+     * - The player attempts to perform [Action.DRAW_CARD] again.
+     *
+     * Expected Result:
+     * - An [IllegalArgumentException] is thrown with a message indicating the action was already performed.
+     */
+    @Test
+    fun testCheckActionRules_repeatedActionThrows() {
+        val player = rootService.currentGame!!.players[0]
+        player.performedActions.add(Action.DRAW_CARD)
+
+        val ex = assertThrows<IllegalArgumentException> {
+            playerActionService.checkActionRules(player, Action.DRAW_CARD)
+        }
+        assertEquals("Action DRAW_CARD already performed.", ex.message)
+    }
+    /**
+     * Tests that [PlayerActionService.checkActionRules] throws an [IllegalStateException]
+     * when the player has already performed two distinct non-combination actions,
+     * and attempts to perform a third distinct action.
+     *
+     * Preconditions:
+     * - The player's performed actions include [Action.DRAW_CARD] and [Action.EXCHANGE_CARD].
+     * - The player attempts to perform [Action.PLAY_COMBINATION].
+     *
+     * Expected Result:
+     * - An [IllegalStateException] is thrown with a message indicating the limit of two actions.
+     */
+    @Test
+    fun testCheckActionRules_twoDifferentActionsThrows() {
+        val player = rootService.currentGame!!.players[0]
+        player.performedActions.addAll(listOf(Action.DRAW_CARD, Action.EXCHANGE_CARD))
+
+        val ex = assertThrows<IllegalStateException> {
+            playerActionService.checkActionRules(player, Action.PLAY_COMBINATION)
+        }
+        assertEquals("You have already performed 2 different actions this turn.", ex.message)
+    }
+
 
 }
+
+

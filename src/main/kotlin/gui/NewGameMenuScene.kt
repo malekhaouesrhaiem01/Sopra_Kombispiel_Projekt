@@ -110,10 +110,9 @@ class NewGameMenuScene(
             } catch (e: IllegalArgumentException) {
                 // Probably empty names or same name twice
                 errorLabel.text = e.message ?: "Ein ungültiger Name wurde eingegeben."
-            } catch (e: Exception) {
+            } catch (e: IllegalStateException) {
                 // Something else went wrong
                 errorLabel.text = "Fehler: ${e.localizedMessage}"
-                e.printStackTrace()
             }
         }
     }
