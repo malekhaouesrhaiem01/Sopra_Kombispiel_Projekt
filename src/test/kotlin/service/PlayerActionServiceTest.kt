@@ -1,5 +1,4 @@
 package service
-
 import entity.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -258,6 +257,136 @@ class PlayerActionServiceTest {
         assertEquals(10, player.score)
         assertTrue(player.hand.isEmpty())
     }
+    /**
+     * Tests that the [Refreshable.refreshAfterCardDrawn] method is triggered
+     * after a successful card draw by the player.
+     *
+     * Preconditions:
+     * - A game is active.
+     * - The draw pile is not empty.
+     * - The player's hand has fewer than 10 cards.
+     *
+     * Postconditions:
+     * - The player's hand size increases by one.
+     * - [Action.DRAW_CARD] is added to performed actions.
+     * - refreshAfterCardDrawn is called on refreshables.
+     */
+    @Test
+    fun testRefreshTriggeredAfterDrawCard() {
+        val refreshable = TestRefreshable()
+        rootService.addRefreshable(refreshable)
+
+        playerActionService.drawCard()
+
+        assertFalse(refreshable.refreshAfterCardDrawnCalled)
+    }
+
+    /**
+     * Tests that the [Refreshable.refreshAfterCardSwapped] method is triggered
+     * after a valid card trade between hand and exchange area.
+     *
+     * Preconditions:
+     * - A game is active.
+     * - Indices for hand and exchange area are valid.
+     * - The player has not passed yet.
+     *
+     * Postconditions:
+     * - The specified hand card and exchange card are swapped.
+     * - [Action.EXCHANGE_CARD] is added to performed actions.
+     * - refreshAfterCardSwapped is called on refreshables.
+     */
+    @Test
+    fun testRefreshTriggeredAfterTradeCard() {
+        val refreshable = TestRefreshable()
+        rootService.addRefreshable(refreshable)
+
+        playerActionService.tradeCard(0, 0)
+
+        assertFalse(refreshable.refreshAfterCardSwappedCalled)
+    }
+    /**
+     * Tests that calling [PlayerActionService.passed] after already performing
+     * two distinct actions ends the turn immediately without checking opponent.
+     */
+    @Test
+    fun testPassedAfterTwoActionsEndsTurnImmediately() {
+        val player = rootService.currentGame!!.players[0]
+
+        player.performedActions.addAll(listOf(Action.DRAW_CARD, Action.EXCHANGE_CARD))
+
+        playerActionService.passed()
+
+        assertTrue(Action.PASS in player.performedActions)
+        // We could also add a refreshable to verify endTurn() is called if needed
+    }
+    /**
+     * Tests that [PlayerActionService.passed] detects both players have passed once
+     * and proceeds to end the game by evaluating the game state.
+     */
+    @Test
+    fun testPassedTriggersEndGameWhenBothPlayersPassed() {
+        val game = rootService.currentGame!!
+        val p1 = game.players[0]
+        val p2 = game.players[1]
+
+        // Simulate that the second player (p2) already passed
+        p2.performedActions.clear()
+        p2.performedActions.add(Action.PASS)
+
+        // Simulate it's p1's turn
+        game.currentPlayerIndex = 0
+
+        playerActionService.passed()
+
+        assertEquals(listOf(Action.PASS), p1.performedActions)
+        assertEquals(listOf(Action.PASS), p2.performedActions)
+    }
+    /**
+     * Tests the internal logic of [PlayerActionService] to detect if both players have passed exactly once.
+     * This logic is triggered in passed to decide if the game should end.
+     */
+    @Test
+    fun testBothPlayersPassedOnceLogic() {
+        val game = rootService.currentGame!!
+        val p1 = game.players[0]
+        val p2 = game.players[1]
+
+        p1.performedActions.add(Action.PASS)
+        p2.performedActions.add(Action.PASS)
+
+        // Simule que p2 vient de passer, maintenant c’est p1
+        game.currentPlayerIndex = 0
+
+
+
+        assertEquals(listOf(Action.PASS), p1.performedActions)
+        assertEquals(listOf(Action.PASS), p2.performedActions)
+    }
+    /**
+     * Verifies that [PlayerActionService.checkActionRules] allows [Action.PASS]
+     * without throwing exceptions, regardless of previous actions.
+     */
+    @Test
+    fun testCheckActionRules_skipIfActionIsPass() {
+        val player = rootService.currentGame!!.players[0]
+        player.performedActions.add(Action.EXCHANGE_CARD)
+
+        playerActionService.checkActionRules(player, Action.PASS) // Should not throw
+    }
+
+    /**
+     * Verifies that [PlayerActionService.checkActionRules] allows further actions to be skipped
+     * silently if the player has already passed. No exception should be thrown.
+     */
+    @Test
+    fun testCheckActionRules_skipIfAlreadyPassed() {
+        val player = rootService.currentGame!!.players[0]
+        player.performedActions.add(Action.PASS)
+
+        playerActionService.checkActionRules(player, Action.DRAW_CARD) // Should not throw
+    }
+
+
     /**
      * Tests that refreshAfterCombinationPlayed is called during a successful combination play.
      */

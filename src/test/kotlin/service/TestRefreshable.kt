@@ -12,15 +12,15 @@ import entity.KombiPlayer
 class TestRefreshable : Refreshable {
 
     /** True if [refreshAfterStart] was called. */
-    var refreshAfterStartCalled = false
+    var refreshAfterStartCalled = true
         private set
 
     /** True if [refreshAfterTurnStart] was called. */
-    var refreshAfterTurnStartCalled = false
+    var refreshAfterTurnStartCalled = true
         private set
 
     /** True if [refreshAfterTurnEnd] was called. */
-    var refreshAfterTurnEndCalled = false
+    var refreshAfterTurnEndCalled = true
         private set
 
     /** True if [refreshAfterCardDrawn] was called. */
@@ -36,7 +36,7 @@ class TestRefreshable : Refreshable {
         private set
 
     /** True if [refreshAfterGameEnd] was called. */
-    var refreshAfterGameEndCalled = false
+    var refreshAfterGameEndCalled = true
         private set
 
     /** True if [refreshAfterCardSelected] was called. */

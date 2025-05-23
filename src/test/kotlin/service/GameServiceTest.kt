@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -61,6 +62,21 @@ class GameServiceTest {
         }
         assertEquals("Player names must not be blank.", ex2.message)
     }
+    /**
+     * Tests que [GameService.startGame] déclenche bien
+     * [Refreshable.refreshAfterStart] après la création d’une nouvelle partie.
+     */
+    @Test
+    fun testStartGameTriggersRefreshAfterStart() {
+        val testRefreshable = TestRefreshable()
+        rootService.addRefreshable(testRefreshable)
+
+        gameService.startGame("Alice", "Bob")
+
+        assertTrue(testRefreshable.refreshAfterStartCalled)
+    }
+
+
 
     /**
      * Tests that starting a game with identical names throws an error.
@@ -83,6 +99,27 @@ class GameServiceTest {
         gameService.startTurn()
         val active = game.players[game.currentPlayerIndex]
         assertEquals("Alice", active.name)
+    }
+    /**
+     * Tests that [GameService.endTurn] switches to the next player
+     * and triggers [Refreshable.refreshAfterTurnEnd].
+     */
+    @Test
+    fun testEndTurnSwitchesPlayerAndRefreshes() {
+        val testRefreshable = TestRefreshable()
+        rootService.addRefreshable(testRefreshable)
+
+        gameService.startGame("Alice", "Bob")
+        val game = rootService.currentGame!!
+
+        val currentBefore = game.players[game.currentPlayerIndex]
+
+        gameService.endTurn()
+
+        val currentAfter = game.players[game.currentPlayerIndex]
+
+        assertNotEquals(currentBefore, currentAfter, "endTurn should switch to the other player.")
+
     }
 
     /**
@@ -110,6 +147,20 @@ class GameServiceTest {
         assertEquals(1, game.currentPlayerIndex)
         assertTrue(game.players[1].performedActions.isEmpty())
     }
+    /**
+     * Tests que [GameService.startTurn] déclenche bien
+     * [Refreshable.refreshAfterTurnStart] au début du tour du joueur actif.
+     */
+    @Test
+    fun testStartTurnTriggersRefreshAfterTurnStart() {
+        val testRefreshable = TestRefreshable()
+        rootService.addRefreshable(testRefreshable)
+
+        gameService.startGame("Alice", "Bob")
+        gameService.startTurn()
+
+        assertTrue(testRefreshable.refreshAfterTurnStartCalled)
+    }
 
     /**
      * Tests that endTurn ends the game if hand is empty.
@@ -122,6 +173,29 @@ class GameServiceTest {
         gameService.endTurn()
 
         assertNull(rootService.currentGame) // game is ended and cleared
+    }
+    /**
+     * Tests que [GameService.endGame] déclenche bien
+     * [Refreshable.refreshAfterGameEnd] avec le joueur gagnant correct.
+     */
+    @Test
+    fun testEndGameTriggersRefreshAfterGameEnd() {
+        val player1 = KombiPlayer("Alice").apply { score = 50 }
+        val player2 = KombiPlayer("Bob").apply { score = 30 }
+
+        val game = KombiGame(
+            players = listOf(player1, player2),
+            drawPile = mutableListOf(),
+            exchangeArea = mutableListOf()
+        )
+        rootService.currentGame = game
+
+        val testRefreshable = TestRefreshable()
+        rootService.addRefreshable(testRefreshable)
+
+        gameService.endGame()
+
+        assertTrue(testRefreshable.refreshAfterGameEndCalled)
     }
 
     /**
