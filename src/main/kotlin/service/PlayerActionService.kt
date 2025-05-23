@@ -54,24 +54,24 @@ class PlayerActionService(
      * @throws IllegalArgumentException if any index is out of range or action already performed.
      */
     fun tradeCard(handIndex: Int, exchangeIndex: Int) {
-        val game = rootService.currentGame ?: throw IllegalStateException("No game active.")
+        val game = rootService.currentGame ?: return
         val player = game.players[game.currentPlayerIndex]
         checkActionRules(player, Action.EXCHANGE_CARD)
 
-        if (handIndex !in player.hand.indices) throw IllegalArgumentException("Invalid hand index.")
-        if (exchangeIndex !in game.exchangeArea.indices) throw IllegalArgumentException("Invalid exchange index.")
+        if (handIndex in player.hand.indices && exchangeIndex !in game.exchangeArea.indices) {
 
-        val handCard = player.hand[handIndex]
-        val exchangeCard = game.exchangeArea[exchangeIndex]
+            val handCard = player.hand[handIndex]
+            val exchangeCard = game.exchangeArea[exchangeIndex]
 
-        player.hand[handIndex] = exchangeCard
-        game.exchangeArea[exchangeIndex] = handCard
-        player.performedActions.add(Action.EXCHANGE_CARD)
-        onAllRefreshables { refreshAfterCardSwapped(handCard, exchangeCard) }
+            player.hand[handIndex] = exchangeCard
+            game.exchangeArea[exchangeIndex] = handCard
+            player.performedActions.add(Action.EXCHANGE_CARD)
+            onAllRefreshables { refreshAfterCardSwapped(handCard, exchangeCard) }
 
-        val distinctNonPlay = player.performedActions.filter { it != Action.PLAY_COMBINATION }.toSet()
-        if (distinctNonPlay.size >= 2) {
-            rootService.gameService.endTurn()
+            val distinctNonPlay = player.performedActions.filter { it != Action.PLAY_COMBINATION }.toSet()
+            if (distinctNonPlay.size >= 2) {
+                rootService.gameService.endTurn()
+            }
         }
     }
 
@@ -83,7 +83,7 @@ class PlayerActionService(
      * @throws IllegalArgumentException if the combination is invalid or cards not in hand.
      */
     fun playCombination(selectedCards: List<KombiCard>) {
-        val game = rootService.currentGame ?: throw IllegalStateException("No game active.")
+        val game = rootService.currentGame ?: return
         val player = game.players[game.currentPlayerIndex]
 
         checkActionRules(player, Action.PLAY_COMBINATION)
@@ -122,7 +122,7 @@ class PlayerActionService(
      * @throws IllegalStateException if player already passed or no game active.
      */
     fun passed() {
-        val game = rootService.currentGame ?: throw IllegalStateException("No game active.")
+        val game = rootService.currentGame ?: return
         val player = game.players[game.currentPlayerIndex]
 
         if (Action.PASS in player.performedActions) {
@@ -162,9 +162,7 @@ class PlayerActionService(
     fun checkActionRules(player: KombiPlayer, action: Action) {
         if (action == Action.PASS) return
 
-        if (Action.PASS in player.performedActions) {
-            throw IllegalStateException("No actions allowed after passing.")
-        }
+        if (Action.PASS in player.performedActions) return
 
         if (action in player.performedActions && action != Action.PLAY_COMBINATION) {
             throw IllegalArgumentException("Action $action already performed.")
@@ -181,7 +179,7 @@ class PlayerActionService(
     }
 
     /**
-     * Determines the type of a combination based on the given cards.
+     * Determines the type of  combination based on the given cards.
      *
      * @param cards The cards the player attempts to play.
      * @return "TRIPLE", "QUADRUPLE", or "SEQUENCE" if valid.
@@ -192,36 +190,41 @@ class PlayerActionService(
         if (cards.size == 4 && cards.all { it.value == cards[0].value }) return "QUADRUPLE"
 
         if (cards.size >= 3 && cards.all { it.suit == cards[0].suit }) {
-            val ordinals = cards.map { it.value.ordinal }
-            val sorted = ordinals.sorted()
-
-            var isNormal = true
-            for (i in 0 until sorted.size - 1) {
-                if (sorted[i + 1] != sorted[i] + 1) {
-                    isNormal = false
-                    break
-                }
-            }
-
-            val hasAce = ordinals.contains(CardValue.ACE.ordinal)
-            val hasTwo = ordinals.contains(CardValue.TWO.ordinal)
-
-            var isWrap = false
-            if (hasAce && hasTwo) {
-                val max = ordinals.maxOrNull() ?: 12
-                val shifted = ordinals.map { if (it < max - 3) it + 13 else it }.sorted()
-                isWrap = true
-                for (i in 0 until shifted.size - 1) {
-                    if (shifted[i + 1] != shifted[i] + 1) {
-                        isWrap = false
-                        break
-                    }
-                }
-            }
-
-            if (isNormal || isWrap) return "SEQUENCE"
+            if (isNormalSequence(cards) || isWrapAroundSequence(cards)) return "SEQUENCE"
         }
 
         throw IllegalArgumentException("Invalid combination.")
+    }
+
+    /**
+     * Checks if the given cards form a normal straight sequence.
+     *
+     * @param cards Cards to check.
+     * @return True if the cards form a normal sequence.
+     */
+    private fun isNormalSequence(cards: List<KombiCard>): Boolean {
+        val sorted = cards.map { it.value.ordinal }.sorted()
+        for (i in 0 until sorted.size - 1) {
+            if (sorted[i + 1] != sorted[i] + 1) return false
+        }
+        return true
+    }
+
+    /**
+     * Checks if the given cards form a wrap-around straight (like K-A-2-3-4).
+     *
+     * @param cards Cards to check.
+     * @return True if the cards form a wrap-around sequence.
+     */
+    private fun isWrapAroundSequence(cards: List<KombiCard>): Boolean {
+        val ordinals = cards.map { it.value.ordinal }
+        if (CardValue.ACE.ordinal !in ordinals || CardValue.TWO.ordinal !in ordinals) return false
+
+        val max = ordinals.maxOrNull() ?: 12
+        val shifted = ordinals.map { if (it < max - 3) it + 13 else it }.sorted()
+        for (i in 0 until shifted.size - 1) {
+            if (shifted[i + 1] != shifted[i] + 1) return false
+        }
+        return true
     }
 }
