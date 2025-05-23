@@ -47,11 +47,12 @@ class GameScene(
             try {
                 rootService.playerActionService.drawCard()
                 checkAndEndTurn()
-            } catch (e: Exception) {
-                application.showMessageToUser(e.message ?: "Draw failed.")
+            } catch (e: IllegalStateException) {
+                application.showMessageToUser(e.message ?: "Draw failed due to game state.")
             }
         }
     }
+
 
     private val drawPileCountLabel = Label(
         posX = 100.0, posY = 580.0,
@@ -128,16 +129,19 @@ class GameScene(
                             rootService.playerActionService.playCombination(selected)
                             checkAndEndTurn()
                         }
-                    } catch (e: Exception) {
-                        application.showMessageToUser(e.message ?: "Play failed.")
+                    } catch (e: IllegalArgumentException) {
+                        application.showMessageToUser(e.message ?: "Invalid combination.")
+                        clearHandSelection()
+                    } catch (e: IllegalStateException) {
+                        application.showMessageToUser(e.message ?: "Play failed due to game state.")
                         clearHandSelection()
                     }
                     playMode = false
                 }
             }
         }
-
     }
+
 
     private val exchangeButton = Button(
         posX = 1650.0, posY = 790.0, width = 200.0, height = 50.0,
@@ -151,16 +155,14 @@ class GameScene(
                 clearExchangeSelection()
             } else {
                 val game = rootService.currentGame
-                if (game != null) {
-
-
-                    if (selectedHandIndex != null && selectedExchangeIndex != null) {
-                        try {
-                            rootService.playerActionService.tradeCard(selectedHandIndex!!, selectedExchangeIndex!!)
-                            checkAndEndTurn()
-                        } catch (e: Exception) {
-                            application.showMessageToUser(e.message ?: "Exchange failed.")
-                        }
+                if (game != null && selectedHandIndex != null && selectedExchangeIndex != null) {
+                    try {
+                        rootService.playerActionService.tradeCard(selectedHandIndex!!, selectedExchangeIndex!!)
+                        checkAndEndTurn()
+                    } catch (e: IllegalArgumentException) {
+                        application.showMessageToUser(e.message ?: "Invalid exchange selection.")
+                    } catch (e: IllegalStateException) {
+                        application.showMessageToUser(e.message ?: "Exchange failed due to game state.")
                     }
                     exchangeMode = false
                     clearHandSelection()
@@ -169,6 +171,7 @@ class GameScene(
             }
         }
     }
+
 
     private val passButton = Button(
         posX = 1650.0, posY = 860.0, width = 200.0, height = 50.0,
@@ -185,11 +188,12 @@ class GameScene(
                     rootService.gameService.endTurn()
                     application.showMenuScene(ConfirmNextPlayerScene(application))
                 }
-            } catch (e: Exception) {
-                application.showMessageToUser(e.message ?: "Pass failed.")
+            } catch (e: IllegalStateException) {
+                application.showMessageToUser(e.message ?: "Pass failed due to invalid state.")
             }
         }
     }
+
 
     init {
         this.background = ImageVisual("gamescene.jpg")
@@ -349,8 +353,10 @@ class GameScene(
             clearHandSelection()
             clearExchangeSelection()
             checkAndEndTurn()
-        } catch (e: Exception) {
-            application.showMessageToUser(e.message ?: "Exchange failed.")
+        } catch (e: IllegalArgumentException) {
+            application.showMessageToUser(e.message ?: "Invalid selection.")
+        } catch (e: IllegalStateException) {
+            application.showMessageToUser(e.message ?: "Exchange failed due to game state.")
         }
     }
 
