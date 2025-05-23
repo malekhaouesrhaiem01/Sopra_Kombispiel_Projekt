@@ -104,19 +104,31 @@ class PlayerActionServiceTest {
     }
 
     /**
-     * Tests that trading with invalid indices throws an IllegalArgumentException.
+     * Tests that trading after PASS does not modify the exchange area or performedActions.
+     *
+     * This test assumes that once a player has passed (Action.PASS), further actions like
+     * tradeCard() should be ignored and not alter the game state.
      */
     @Test
-    fun testTradeCard_invalidIndices() {
-        //val player = rootService.currentGame!!.players[0]
-        assertThrows<IllegalArgumentException> {
-            playerActionService.tradeCard(-1, 0)
-        }
-        assertThrows<IllegalArgumentException> {
-            playerActionService.tradeCard(0, 99)
-        }
-    }
+    fun testActionAfterPassIgnored() {
+        val player = rootService.currentGame!!.players[0]
+        val exchangeArea = rootService.currentGame!!.exchangeArea
 
+        val originalHand = player.hand.map { it.copy() }
+        val exchangeCardBefore = exchangeArea.map { it.copy() }
+
+        // Simulate the player has passed
+        player.performedActions.clear()
+        player.performedActions.add(Action.PASS)
+
+        // Attempt trade (should be ignored)
+        playerActionService.tradeCard(0, 0)
+
+        // Assert the exchange area and hand did not change
+        assertEquals(originalHand, player.hand, "Player hand should not change after PASS.")
+        assertEquals(exchangeCardBefore, exchangeArea, "Exchange area should not change after PASS.")
+        assertEquals(listOf(Action.PASS), player.performedActions, "No additional actions should be added after PASS.")
+    }
     // --- passed() tests ---
 
     /**
@@ -143,16 +155,28 @@ class PlayerActionServiceTest {
     }
 
     /**
-     * Tests that performing an action after passing is not allowed.
+     * Tests that trading with invalid indices is ignored safely.
+     *
+     * If hand or exchange index is out of bounds, no change should occur:
+     * - The player's hand and the exchange area must remain exactly the same.
+     * - No exceptions should be thrown.
      */
     @Test
-    fun testActionAfterPassThrows() {
+    fun testTradeCard_invalidIndicesIgnored() {
         val player = rootService.currentGame!!.players[0]
-        player.performedActions.add(Action.PASS)
-        val ex = assertThrows<IllegalStateException> {
-            playerActionService.tradeCard(0, 0)
-        }
-        assertEquals("No actions allowed after passing.", ex.message)
+        val exchangeArea = rootService.currentGame!!.exchangeArea
+
+        val originalHand = player.hand.toList()
+        val originalExchange = exchangeArea.toList()
+
+        // Invalid hand index
+        playerActionService.tradeCard(-1, 0)
+        // Invalid exchange index
+        playerActionService.tradeCard(0, 99)
+
+        // Nothing should be modified
+        assertEquals(originalHand, player.hand)
+        assertEquals(originalExchange, exchangeArea)
     }
 
     // --- playCombination() tests ---

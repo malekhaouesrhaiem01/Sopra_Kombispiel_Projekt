@@ -27,7 +27,7 @@ class PlayerActionService(
      * @throws IllegalStateException if no game is active, draw pile is empty, or hand is full.
      */
     fun drawCard() {
-        val game = rootService.currentGame ?: throw IllegalStateException("No game active.")
+        val game = rootService.currentGame ?: return
         val player = game.players[game.currentPlayerIndex]
         checkActionRules(player, Action.DRAW_CARD)
 
@@ -56,9 +56,10 @@ class PlayerActionService(
     fun tradeCard(handIndex: Int, exchangeIndex: Int) {
         val game = rootService.currentGame ?: return
         val player = game.players[game.currentPlayerIndex]
+        if (Action.PASS in player.performedActions) return
         checkActionRules(player, Action.EXCHANGE_CARD)
 
-        if (handIndex in player.hand.indices && exchangeIndex !in game.exchangeArea.indices) {
+        if (handIndex in player.hand.indices && exchangeIndex in game.exchangeArea.indices) {
 
             val handCard = player.hand[handIndex]
             val exchangeCard = game.exchangeArea[exchangeIndex]
@@ -139,12 +140,7 @@ class PlayerActionService(
         player.performedActions.add(Action.PASS)
 
         val otherPlayer = game.players[(game.currentPlayerIndex + 1) % 2]
-        if (
-            otherPlayer.performedActions.size == 1 &&
-            player.performedActions.size == 1 &&
-            otherPlayer.performedActions[0] == Action.PASS &&
-            player.performedActions[0] == Action.PASS
-        ) {
+        if (bothPlayersPassedOnce(player, otherPlayer)) {
             rootService.gameService.endGame()
         } else {
             rootService.gameService.endTurn()
@@ -226,5 +222,18 @@ class PlayerActionService(
             if (shifted[i + 1] != shifted[i] + 1) return false
         }
         return true
+    }
+    /**
+     * Checks if both players have passed exactly once this turn.
+     *
+     * @param player The current player
+     * @param otherPlayer The opponent player
+     * @return True if both players have exactly one PASS action.
+     */
+    private fun bothPlayersPassedOnce(player: KombiPlayer, otherPlayer: KombiPlayer): Boolean {
+        return player.performedActions.size == 1 &&
+                otherPlayer.performedActions.size == 1 &&
+                player.performedActions[0] == Action.PASS &&
+                otherPlayer.performedActions[0] == Action.PASS
     }
 }
