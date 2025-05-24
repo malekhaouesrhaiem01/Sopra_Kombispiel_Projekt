@@ -52,6 +52,40 @@ class GameScene(
             }
         }
     }
+    private val playerDiscardLabel = Label(
+        posX = 50.0, posY = 880.0,  // place just above player discard
+        width = 300.0, height = 30.0,
+        text = "Discard Pile Player 1",
+        font = Font(size = 24, fontWeight = Font.FontWeight.BOLD,color = Color(255, 140, 0)),
+        alignment = Alignment.TOP_LEFT,
+        visual = ColorVisual(255, 255, 255, 0)
+    )
+
+    private val opponentDiscardLabel = Label(
+        posX = 50.0, posY = 150.0,  // place just above opponent discard
+        width = 300.0, height = 30.0,
+        text = "Discard Pile Player 2",
+        font = Font(size = 24, fontWeight = Font.FontWeight.BOLD, color = Color(30, 144, 255)),
+        alignment = Alignment.TOP_LEFT,
+        visual = ColorVisual(255, 255, 255, 0)
+    )
+    private val playerDiscardArea = LinearLayout<CardView>(
+        posX = 50.0, posY = 910.0, // directly under label
+        width = 400.0, height = 80.0,
+        spacing = -25.0,
+        orientation = Orientation.HORIZONTAL,
+        alignment = Alignment.CENTER_LEFT,
+        visual = ColorVisual.TRANSPARENT
+    )
+
+    private val opponentDiscardArea = LinearLayout<CardView>(
+        posX = 50.0, posY = 180.0,  // directly under label
+        width = 400.0, height = 80.0,
+        spacing = -25.0,
+        orientation = Orientation.HORIZONTAL,
+        alignment = Alignment.CENTER_LEFT,
+        visual = ColorVisual.TRANSPARENT
+    )
 
 
     private val drawPileCountLabel = Label(
@@ -65,14 +99,14 @@ class GameScene(
 
     private val playerHand = LinearLayout<GameComponentView>(
         posX = 440.0, posY = 880.0, width = 1200.0, height = 200.0,
-        spacing = 5.0, orientation = Orientation.HORIZONTAL,
+        spacing = -25.0, orientation = Orientation.HORIZONTAL,
         alignment = Alignment.CENTER,
         visual = ColorVisual.TRANSPARENT
     )
 
     private val opponentHand = LinearLayout<GameComponentView>(
         posX = 440.0, posY = 80.0, width = 1200.0, height = 200.0,
-        spacing = 5.0, orientation = Orientation.HORIZONTAL,
+        spacing = -25.0, orientation = Orientation.HORIZONTAL,
         alignment = Alignment.CENTER,
         visual = ColorVisual.TRANSPARENT
     )
@@ -199,8 +233,9 @@ class GameScene(
         this.background = ImageVisual("gamescene.jpg")
         addComponents(
             playerHand, opponentHand, drawPileCard, drawPileCountLabel, exchangeArea,
-            playButton, exchangeButton, passButton,
-            actionLabel, playerScoreLabel, opponentScoreLabel
+            playButton, exchangeButton, passButton,playerDiscardArea,
+            opponentDiscardArea,opponentDiscardLabel,playerDiscardLabel,
+                    actionLabel, playerScoreLabel, opponentScoreLabel
         )
     }
 
@@ -231,7 +266,9 @@ class GameScene(
 
         if (Action.PASS in player.performedActions || distinctNonPlayActions.size >= 2) {
             rootService.gameService.endTurn()
-            application.showMenuScene(ConfirmNextPlayerScene(application))
+            val confirmScene = ConfirmNextPlayerScene(application)
+            confirmScene.refreshAfterTurnEnd()
+            application.showMenuScene(confirmScene)
         }
     }
 
@@ -239,20 +276,21 @@ class GameScene(
 
 
     /**
-     * Updates the entire GameScene UI after every game state change.
+     * Updates the entire visual state of the GameScene to reflect the current game state.
      *
      * This includes:
-     * - Updating draw pile visibility and count
-     * - Regenerating current player hand (face-up, selectable)
-     * - Regenerating opponent hand (face-down)
-     * - Rebuilding exchange area (face-up, selectable in any order)
-     * - Updating score and action labels
+     * - Updating the draw pile visibility and remaining count
+     * - Rebuilding the current player's hand (face-up, selectable)
+     * - Rebuilding the opponent's hand (face-down)
+     * - Rebuilding the exchange area (face-up, selectable)
+     * - Rendering each player's discard pile with smaller overlapping cards
+     * - Updating action and score labels for both players
      *
-     * Also supports card selection logic for play or exchange modes, including:
-     * - Selecting hand or exchange card first (flexible order)
-     * - Card rotation feedback
-     * - Immediate swap if both cards are selected
+     * Additionally:
+     * - If the current player’s hand is empty, the game is automatically ended
+     *   by calling gameservice endgame which then triggers the result scene.
      */
+
     fun refreshDisplay() {
         val game = rootService.currentGame ?: return
         val currentPlayer = game.players[game.currentPlayerIndex]
@@ -303,6 +341,26 @@ class GameScene(
             ).apply { showBack() }
             opponentHand.add(view)
         }
+        playerDiscardArea.clear()
+        opponentDiscardArea.clear()
+
+        currentPlayer.discardPile.forEach {
+            val view = CardView(
+                width = 65.0, height = 95.0,
+                front = cardImageLoader.frontImageFor(it.suit, it.value),
+                back = cardImageLoader.backImage
+            ).apply { showFront() }
+            playerDiscardArea.add(view)
+        }
+
+        opponent.discardPile.forEach {
+            val view = CardView(
+                width = 65.0, height = 95.0,
+                front = cardImageLoader.frontImageFor(it.suit, it.value),
+                back = cardImageLoader.backImage
+            ).apply { showFront() }
+            opponentDiscardArea.add(view)
+        }
 
         exchangeArea.clear()
         game.exchangeArea.forEachIndexed { index, card ->
@@ -326,6 +384,11 @@ class GameScene(
                 }
             }
             exchangeArea.add(view)
+
+        }
+        if (currentPlayer.hand.isEmpty()) {
+            rootService.gameService.endGame()
+            return
         }
 
         actionLabel.text = "Actions: ${currentPlayer.performedActions.joinToString()}"
@@ -360,9 +423,26 @@ class GameScene(
         }
     }
 
+    /**
+     * Clears all selected card indices and disables play/exchange modes.
+     *
+     * Should be called at the start of each turn or when switching actions.
+     */
+    private fun resetSelections() {
+        selectedHandIndex = null
+        selectedExchangeIndex = null
+        selectedCards.clear()
+        playMode = false
+        exchangeMode = false
+        clearHandSelection()
+        clearExchangeSelection()
+    }
 
 
-    override fun refreshAfterTurnStart(activePlayer: KombiPlayer) = refreshDisplay()
+    override fun refreshAfterTurnStart(activePlayer: KombiPlayer) {
+        resetSelections()
+        refreshDisplay()
+    }
     override fun refreshAfterTurnEnd() {
         refreshDisplay()
         application.showConfirmNextPlayerScene()
