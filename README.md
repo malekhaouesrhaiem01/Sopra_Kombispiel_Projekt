@@ -11,7 +11,7 @@ Schritte
 
 Repository klonen oder herunterladen:
 
-git clone https://github.com/malekhaouesrhaiem/Sopra_Kombispiel_Projekt.git
+git clone https://github.com/malekhaouesrhaiem01/Sopra_Kombispiel_Projekt.git
 cd Sopra_Kombispiel_Projekt
 
 
